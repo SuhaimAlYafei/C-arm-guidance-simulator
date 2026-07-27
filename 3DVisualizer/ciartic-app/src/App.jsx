@@ -12,7 +12,7 @@ import { CONTROL_SPECS, DEVICE_PROFILE } from './constants';
 const R2D = 180 / Math.PI;
 const D2R = Math.PI / 180;
 
-const PLANNER_URL = 'http://127.0.0.1:8000/plan';
+const PLANNER_URL = 'https://c-arm-guidance-simulator.onrender.com';
 const PLANNER_WAYPOINT_DELAY_MS = 90;
 
 // The planner landmarks and CT-to-world transform are registered against this
@@ -2589,7 +2589,7 @@ const App = () => {
             );
 
             const response = await fetch(
-                "http://127.0.0.1:8000/render",
+                "https://c-arm-guidance-simulator.onrender.com",
                 {
                     method: "POST",
                     headers: {
@@ -2729,7 +2729,7 @@ const App = () => {
                     "DiffDRR rendering failed.\n\n"
                     + errorMessage
                     + "\n\nMake sure the Python server is running at "
-                    + "http://127.0.0.1:8000"
+                    + "https://c-arm-guidance-simulator.onrender.com"
                 );
             }
         } finally {
