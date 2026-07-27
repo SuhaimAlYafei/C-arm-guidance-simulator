@@ -1,0 +1,108 @@
+{
+  "sample_id": "sample_2026-07-26T20-50-57-746Z",
+  "anatomy": "head",
+  "pose_convention": {
+    "local_positive_x": "detector horizontal",
+    "local_negative_y": "source-to-detector beam",
+    "local_positive_z": "detector vertical"
+  },
+  "exported_geometry": {
+    "source_position_world_mm": [
+      0.0,
+      1081.9999999999998,
+      600.0000000000003
+    ],
+    "detector_center_world_mm": [
+      -3.6739403974420595e-14,
+      2122.0,
+      600.0000000000003
+    ],
+    "detector_x_world": [
+      -2.220446049250313e-16,
+      -7.844025423732063e-33,
+      -1.0
+    ],
+    "detector_y_world": [
+      -1.0,
+      -3.532634997540442e-17,
+      2.220446049250313e-16
+    ],
+    "beam_direction_world": [
+      -3.532634997540441e-17,
+      1.0,
+      0.0
+    ],
+    "source_to_detector_distance_mm": 1040.0000000000002,
+    "detector_size_mm": [
+      204.8,
+      204.8
+    ]
+  },
+  "diffdrr_camera": {
+    "detector_x_ct": [
+      3.4450928483976665e-16,
+      -1.0,
+      -2.220446049250313e-16
+    ],
+    "detector_y_ct": [
+      1.0,
+      3.4450928483976665e-16,
+      -3.532634997540436e-17
+    ],
+    "beam_direction_ct": [
+      3.5326349975404436e-17,
+      -2.220446049250313e-16,
+      1.0
+    ],
+    "source_position_ct_mm": [
+      -3.002739747909377e-14,
+      1.887379141862766e-13,
+      -850.0
+    ],
+    "isocenter_position_ct_mm": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "source_to_isocenter_mm": 850.0
+  },
+  "detector": {
+    "width_px": 512,
+    "height_px": 512,
+    "pixel_spacing_mm": [
+      0.4,
+      0.4
+    ],
+    "source_to_detector_distance_mm": 1040.0000000000002
+  },
+  "render": {
+    "width_px": 256,
+    "height_px": 256
+  },
+  "diffdrr_pose_matrix": [
+    [
+      3.4450928483976665e-16,
+      -3.5326349975404436e-17,
+      1.0,
+      -3.002739747909377e-14
+    ],
+    [
+      -1.0,
+      2.220446049250313e-16,
+      3.4450928483976665e-16,
+      1.887379141862766e-13
+    ],
+    [
+      -2.220446049250313e-16,
+      -1.0,
+      -3.532634997540436e-17,
+      -850.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ]
+}

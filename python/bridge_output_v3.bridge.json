@@ -1,0 +1,135 @@
+{
+  "sample_id": "sample_2026-07-27T17-52-52-515Z",
+  "anatomy": "LM9",
+  "pose_convention": {
+    "local_positive_x": "detector horizontal",
+    "local_negative_y": "source-to-detector beam",
+    "local_positive_z": "detector vertical"
+  },
+  "exported_geometry": {
+    "source_position_world_mm": [
+      0.0,
+      1081.9999999999998,
+      600.0000000000003
+    ],
+    "detector_center_world_mm": [
+      -3.6739403974420595e-14,
+      2122.0,
+      600.0000000000003
+    ],
+    "detector_x_world": [
+      -2.220446049250313e-16,
+      -7.844025423732063e-33,
+      -1.0
+    ],
+    "detector_y_world": [
+      -1.0,
+      -3.532634997540442e-17,
+      2.220446049250313e-16
+    ],
+    "beam_direction_world": [
+      -3.532634997540441e-17,
+      1.0,
+      0.0
+    ],
+    "source_to_detector_distance_mm": 1040.0000000000002,
+    "detector_size_mm": [
+      204.8,
+      204.8
+    ]
+  },
+  "diffdrr_camera": {
+    "detector_x_ct": [
+      -3.4450928483976665e-16,
+      -2.220446049250313e-16,
+      -1.0
+    ],
+    "detector_y_ct": [
+      -1.0,
+      -3.532634997540437e-17,
+      3.4450928483976665e-16
+    ],
+    "beam_direction_ct": [
+      -3.532634997540444e-17,
+      1.0,
+      -2.220446049250313e-16
+    ],
+    "source_position_ct_mm": [
+      -2.4375181483029064e-14,
+      -249.99999999999966,
+      122.00000000000024
+    ],
+    "detector_position_ct_mm": [
+      -6.111458545744969e-14,
+      790.0000000000006,
+      122.00000000000001
+    ],
+    "isocenter_position_ct_mm": [
+      -5.440257896212284e-14,
+      600.0000000000003,
+      122.00000000000006
+    ],
+    "source_to_isocenter_mm": 850.0,
+    "beam_intersects_ct": true
+  },
+  "registration": {
+    "origin_mode": "direct_camera_to_ct",
+    "axis_rotation": [
+      [
+        -1.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0
+      ]
+    ],
+    "score": 122.00000000000018
+  },
+  "detector": {
+    "width_px": 512,
+    "height_px": 512,
+    "pixel_spacing_mm": [
+      0.4,
+      0.4
+    ],
+    "source_to_detector_distance_mm": 1040.0000000000002
+  },
+  "render": {
+    "width_px": 256,
+    "height_px": 256
+  },
+  "diffdrr_pose_matrix": [
+    [
+      -3.4450928483976665e-16,
+      3.532634997540444e-17,
+      -1.0,
+      -2.4375181483029064e-14
+    ],
+    [
+      -2.220446049250313e-16,
+      -1.0,
+      -3.532634997540437e-17,
+      -249.99999999999966
+    ],
+    [
+      -1.0,
+      2.220446049250313e-16,
+      3.4450928483976665e-16,
+      122.00000000000024
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ]
+}

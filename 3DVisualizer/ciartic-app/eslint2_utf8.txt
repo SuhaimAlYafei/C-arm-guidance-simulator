@@ -1,0 +1,22 @@
+﻿
+> ciartic-app@0.0.0 lint
+> eslint .
+
+
+C:\Users\iyad\Documents\Github\c-arm\C_arm_guidance_APAH\3DVisualizer\ciartic-app\src\App.jsx
+   514:18  error  '_e' is defined but never used      no-unused-vars
+   911:14  error  '_error' is defined but never used  no-unused-vars
+   934:14  error  '_error' is defined but never used  no-unused-vars
+   957:14  error  '_error' is defined but never used  no-unused-vars
+   981:14  error  '_error' is defined but never used  no-unused-vars
+  1279:13  error  'setModelLoading' is not defined    no-undef
+
+C:\Users\iyad\Documents\Github\c-arm\C_arm_guidance_APAH\3DVisualizer\ciartic-app\src\components\ControllerPanel.jsx
+  1:25  error  'useEffect' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  4:28  error  'controls' is defined but never used                                              no-unused-vars
+
+C:\Users\iyad\Documents\Github\c-arm\C_arm_guidance_APAH\3DVisualizer\ciartic-app\src\utils\imagingGeometry.js
+  112:11  error  't' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+Γ£û 9 problems (9 errors, 0 warnings)
+

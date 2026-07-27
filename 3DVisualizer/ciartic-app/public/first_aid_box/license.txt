@@ -1,0 +1,11 @@
+Model Information:
+* title:	First Aid Box
+* source:	https://sketchfab.com/3d-models/first-aid-box-edaba58075ff4796a3ff5c4a43a765a7
+* author:	TheoClarke (https://sketchfab.com/TheoClarke)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "First Aid Box" (https://sketchfab.com/3d-models/first-aid-box-edaba58075ff4796a3ff5c4a43a765a7) by TheoClarke (https://sketchfab.com/TheoClarke) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

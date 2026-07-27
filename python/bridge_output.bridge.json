@@ -1,0 +1,77 @@
+{
+  "sample_id": "sample_2026-07-26T19-41-38-929Z",
+  "anatomy": "abdomen",
+  "axis_map": "identity",
+  "pose_convention": {
+    "local_positive_x": "detector horizontal",
+    "local_negative_y": "source-to-detector beam",
+    "local_positive_z": "detector vertical"
+  },
+  "camera": {
+    "detector_x": [
+      3.4450928483976665e-16,
+      -1.0,
+      -2.220446049250313e-16
+    ],
+    "detector_y": [
+      1.0,
+      3.4450928483976665e-16,
+      -3.5326349975404355e-17
+    ],
+    "beam_direction": [
+      3.532634997540443e-17,
+      -2.220446049250313e-16,
+      1.0
+    ],
+    "source_position_mm": [
+      -3.0027397479093764e-14,
+      1.887379141862766e-13,
+      -850.0
+    ],
+    "isocenter_position_mm": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "source_to_isocenter_mm": 850.0
+  },
+  "detector": {
+    "width_px": 512,
+    "height_px": 512,
+    "pixel_spacing_mm": [
+      0.4,
+      0.4
+    ],
+    "source_to_detector_distance_mm": 1040.0000000000005
+  },
+  "render": {
+    "width_px": 256,
+    "height_px": 256
+  },
+  "diffdrr_pose_matrix": [
+    [
+      3.4450928483976665e-16,
+      -3.532634997540443e-17,
+      1.0,
+      -3.0027397479093764e-14
+    ],
+    [
+      -1.0,
+      2.220446049250313e-16,
+      3.4450928483976665e-16,
+      1.887379141862766e-13
+    ],
+    [
+      -2.220446049250313e-16,
+      -1.0,
+      -3.5326349975404355e-17,
+      -850.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ]
+}

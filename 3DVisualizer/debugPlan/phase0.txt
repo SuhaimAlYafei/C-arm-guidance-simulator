@@ -1,0 +1,36 @@
+Phase 0 — baseline freeze
+
+
+record the current baseline:
+
+App loads without black screen.
+
+Main 3D scene renders.
+
+Controller panel still works.
+
+Expose button generates an image.
+
+Download X-ray works.
+
+Depth view renders.
+
+Debug panel toggles with D.
+
+Patient toggles with P.
+
+Landmarks toggle with L.
+
+Instructions toggle with I.
+
+Arduino connect toggle with C.
+
+CSV export still downloads on exposure.
+
+Also note one representative debug state:
+
+beam region shown
+
+CT hit state
+
+sample Cam CT Pos

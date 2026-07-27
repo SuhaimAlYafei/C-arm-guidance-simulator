@@ -1,0 +1,749 @@
+DIFFDRR AXIS AND BEAM-CENTERING CALIBRATION RESULTS
+================================================
+
+Beam-centering diagnostic enabled: True
+
+Rank: 01
+Candidate: 21
+Mapping: X=-Z, Y=-Y, Z=-X
+Score: 232.91247403621674
+Nonzero fraction: 0.1885986328125
+Minimum: 0.0
+Maximum: 23.742795944213867
+Mean: 1.7899278402328491
+Standard deviation: 4.252391338348389
+Total intensity: 29326.177734375
+Calibration rotation:
+[[ 0.  0. -1.]
+ [ 0. -1.  0.]
+ [-1.  0.  0.]]
+Source before centering:
+[ 1.900000e+02 -1.962000e+02  2.402757e-14]
+Source after centering:
+[1.900000e+02 0.000000e+00 6.712006e-15]
+Beam direction:
+[-1.000000e+00  2.220446e-16 -3.532635e-17]
+Removed perpendicular offset:
+[ 0.0000000e+00 -1.9620000e+02  1.7315564e-14]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[ 2.220446e-16  3.532635e-17 -1.000000e+00  1.900000e+02]
+ [ 1.000000e+00 -3.445093e-16  2.220446e-16  0.000000e+00]
+ [-3.445093e-16 -1.000000e+00 -3.532635e-17  6.712006e-15]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_21_score_232.912_XmZ_YmY_ZmX.png
+
+Rank: 02
+Candidate: 22
+Mapping: X=-Z, Y=+Y, Z=+X
+Score: 232.91247379779816
+Nonzero fraction: 0.1885986328125
+Minimum: 0.0
+Maximum: 23.742801666259766
+Mean: 1.78992760181427
+Standard deviation: 4.252391338348389
+Total intensity: 29326.173828125
+Calibration rotation:
+[[ 0.  0. -1.]
+ [ 0.  1.  0.]
+ [ 1.  0.  0.]]
+Source before centering:
+[ 1.900000e+02  1.962000e+02 -2.402757e-14]
+Source after centering:
+[ 1.900000e+02  0.000000e+00 -6.712006e-15]
+Beam direction:
+[-1.000000e+00 -2.220446e-16  3.532635e-17]
+Removed perpendicular offset:
+[ 0.0000000e+00  1.9620000e+02 -1.7315564e-14]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[ 2.220446e-16  3.532635e-17 -1.000000e+00  1.900000e+02]
+ [-1.000000e+00  3.445093e-16 -2.220446e-16  0.000000e+00]
+ [ 3.445093e-16  1.000000e+00  3.532635e-17 -6.712006e-15]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_22_score_232.912_XmZ_YpY_ZpX.png
+
+Rank: 03
+Candidate: 14
+Mapping: X=-Y, Y=+Z, Z=-X
+Score: 200.71177479438484
+Nonzero fraction: 0.20025634765625
+Minimum: 0.0
+Maximum: 0.27441614866256714
+Mean: 0.01789264939725399
+Standard deviation: 0.043753448873758316
+Total intensity: 293.1531677246094
+Calibration rotation:
+[[ 0. -1.  0.]
+ [ 0.  0.  1.]
+ [-1.  0.  0.]]
+Source before centering:
+[-1.962000e+02 -1.900000e+02  2.402757e-14]
+Source after centering:
+[ 0.000000e+00 -1.900000e+02  6.712006e-15]
+Beam direction:
+[ 2.220446e-16  1.000000e+00 -3.532635e-17]
+Removed perpendicular offset:
+[-1.9620000e+02  0.0000000e+00  1.7315564e-14]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[ 1.000000e+00 -3.445093e-16  2.220446e-16  0.000000e+00]
+ [-2.220446e-16 -3.532635e-17  1.000000e+00 -1.900000e+02]
+ [-3.445093e-16 -1.000000e+00 -3.532635e-17  6.712006e-15]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_14_score_200.712_XmY_YpZ_ZmX.png
+
+Rank: 04
+Candidate: 16
+Mapping: X=+Y, Y=+Z, Z=+X
+Score: 200.71177468635142
+Nonzero fraction: 0.20025634765625
+Minimum: 0.0
+Maximum: 0.2744161784648895
+Mean: 0.01789265312254429
+Standard deviation: 0.04375343769788742
+Total intensity: 293.1532287597656
+Calibration rotation:
+[[0. 1. 0.]
+ [0. 0. 1.]
+ [1. 0. 0.]]
+Source before centering:
+[ 1.962000e+02 -1.900000e+02 -2.402757e-14]
+Source after centering:
+[ 0.000000e+00 -1.900000e+02 -6.712006e-15]
+Beam direction:
+[-2.220446e-16  1.000000e+00  3.532635e-17]
+Removed perpendicular offset:
+[ 1.9620000e+02  0.0000000e+00 -1.7315564e-14]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[-1.000000e+00  3.445093e-16 -2.220446e-16  0.000000e+00]
+ [-2.220446e-16 -3.532635e-17  1.000000e+00 -1.900000e+02]
+ [ 3.445093e-16  1.000000e+00  3.532635e-17 -6.712006e-15]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_16_score_200.712_XpY_YpZ_ZpX.png
+
+Rank: 05
+Candidate: 24
+Mapping: X=+Z, Y=+Y, Z=-X
+Score: 195.7472254037857
+Nonzero fraction: 0.1861572265625
+Minimum: 0.0
+Maximum: 3.846127986907959
+Mean: 0.3920019865036011
+Standard deviation: 0.9197996854782104
+Total intensity: 6422.560546875
+Calibration rotation:
+[[ 0.  0.  1.]
+ [ 0.  1.  0.]
+ [-1.  0.  0.]]
+Source before centering:
+[-1.900000e+02  1.962000e+02  2.402757e-14]
+Source after centering:
+[-1.900000e+02  0.000000e+00  6.712006e-15]
+Beam direction:
+[ 1.000000e+00 -2.220446e-16 -3.532635e-17]
+Removed perpendicular offset:
+[0.0000000e+00 1.9620000e+02 1.7315564e-14]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[-2.220446e-16 -3.532635e-17  1.000000e+00 -1.900000e+02]
+ [-1.000000e+00  3.445093e-16 -2.220446e-16  0.000000e+00]
+ [-3.445093e-16 -1.000000e+00 -3.532635e-17  6.712006e-15]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_24_score_195.747_XpZ_YpY_ZmX.png
+
+Rank: 06
+Candidate: 23
+Mapping: X=+Z, Y=-Y, Z=+X
+Score: 195.74722534418106
+Nonzero fraction: 0.1861572265625
+Minimum: 0.0
+Maximum: 3.846127986907959
+Mean: 0.3920019268989563
+Standard deviation: 0.9197996854782104
+Total intensity: 6422.5595703125
+Calibration rotation:
+[[ 0.  0.  1.]
+ [ 0. -1.  0.]
+ [ 1.  0.  0.]]
+Source before centering:
+[-1.900000e+02 -1.962000e+02 -2.402757e-14]
+Source after centering:
+[-1.900000e+02  0.000000e+00 -6.712006e-15]
+Beam direction:
+[1.000000e+00 2.220446e-16 3.532635e-17]
+Removed perpendicular offset:
+[ 0.0000000e+00 -1.9620000e+02 -1.7315564e-14]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[-2.220446e-16 -3.532635e-17  1.000000e+00 -1.900000e+02]
+ [ 1.000000e+00 -3.445093e-16  2.220446e-16  0.000000e+00]
+ [ 3.445093e-16  1.000000e+00  3.532635e-17 -6.712006e-15]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_23_score_195.747_XpZ_YmY_ZpX.png
+
+Rank: 07
+Candidate: 01
+Mapping: X=-X, Y=-Y, Z=+Z
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[-1.  0.  0.]
+ [ 0. -1.  0.]
+ [ 0.  0.  1.]]
+Source before centering:
+[ 2.402757e-14 -1.962000e+02 -1.900000e+02]
+Source after centering:
+[ 6.712006e-15  0.000000e+00 -1.900000e+02]
+Beam direction:
+[-3.532635e-17  2.220446e-16  1.000000e+00]
+Removed perpendicular offset:
+[ 1.7315564e-14 -1.9620000e+02  0.0000000e+00]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[-3.445093e-16 -1.000000e+00 -3.532635e-17  6.712006e-15]
+ [ 1.000000e+00 -3.445093e-16  2.220446e-16  0.000000e+00]
+ [-2.220446e-16 -3.532635e-17  1.000000e+00 -1.900000e+02]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_01_score_0.000_XmX_YmY_ZpZ.png
+
+Rank: 08
+Candidate: 02
+Mapping: X=-X, Y=+Y, Z=-Z
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[-1.  0.  0.]
+ [ 0.  1.  0.]
+ [ 0.  0. -1.]]
+Source before centering:
+[2.402757e-14 1.962000e+02 1.900000e+02]
+Source after centering:
+[6.712006e-15 0.000000e+00 1.900000e+02]
+Beam direction:
+[-3.532635e-17 -2.220446e-16 -1.000000e+00]
+Removed perpendicular offset:
+[1.7315564e-14 1.9620000e+02 0.0000000e+00]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[-3.445093e-16 -1.000000e+00 -3.532635e-17  6.712006e-15]
+ [-1.000000e+00  3.445093e-16 -2.220446e-16  0.000000e+00]
+ [ 2.220446e-16  3.532635e-17 -1.000000e+00  1.900000e+02]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_02_score_0.000_XmX_YpY_ZmZ.png
+
+Rank: 09
+Candidate: 03
+Mapping: X=+X, Y=-Y, Z=-Z
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[ 1.  0.  0.]
+ [ 0. -1.  0.]
+ [ 0.  0. -1.]]
+Source before centering:
+[-2.402757e-14 -1.962000e+02  1.900000e+02]
+Source after centering:
+[-6.712006e-15  0.000000e+00  1.900000e+02]
+Beam direction:
+[ 3.532635e-17  2.220446e-16 -1.000000e+00]
+Removed perpendicular offset:
+[-1.7315564e-14 -1.9620000e+02  0.0000000e+00]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[ 3.445093e-16  1.000000e+00  3.532635e-17 -6.712006e-15]
+ [ 1.000000e+00 -3.445093e-16  2.220446e-16  0.000000e+00]
+ [ 2.220446e-16  3.532635e-17 -1.000000e+00  1.900000e+02]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_03_score_0.000_XpX_YmY_ZmZ.png
+
+Rank: 10
+Candidate: 04
+Mapping: X=+X, Y=+Y, Z=+Z
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[1. 0. 0.]
+ [0. 1. 0.]
+ [0. 0. 1.]]
+Source before centering:
+[-2.402757e-14  1.962000e+02 -1.900000e+02]
+Source after centering:
+[-6.712006e-15  0.000000e+00 -1.900000e+02]
+Beam direction:
+[ 3.532635e-17 -2.220446e-16  1.000000e+00]
+Removed perpendicular offset:
+[-1.7315564e-14  1.9620000e+02  0.0000000e+00]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[ 3.445093e-16  1.000000e+00  3.532635e-17 -6.712006e-15]
+ [-1.000000e+00  3.445093e-16 -2.220446e-16  0.000000e+00]
+ [-2.220446e-16 -3.532635e-17  1.000000e+00 -1.900000e+02]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_04_score_0.000_XpX_YpY_ZpZ.png
+
+Rank: 11
+Candidate: 05
+Mapping: X=-X, Y=-Z, Z=-Y
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[-1.  0.  0.]
+ [ 0.  0. -1.]
+ [ 0. -1.  0.]]
+Source before centering:
+[ 2.402757e-14  1.900000e+02 -1.962000e+02]
+Source after centering:
+[6.712006e-15 1.900000e+02 0.000000e+00]
+Beam direction:
+[-3.532635e-17 -1.000000e+00  2.220446e-16]
+Removed perpendicular offset:
+[ 1.7315564e-14  0.0000000e+00 -1.9620000e+02]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[-3.445093e-16 -1.000000e+00 -3.532635e-17  6.712006e-15]
+ [ 2.220446e-16  3.532635e-17 -1.000000e+00  1.900000e+02]
+ [ 1.000000e+00 -3.445093e-16  2.220446e-16  0.000000e+00]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_05_score_0.000_XmX_YmZ_ZmY.png
+
+Rank: 12
+Candidate: 06
+Mapping: X=-X, Y=+Z, Z=+Y
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[-1.  0.  0.]
+ [ 0.  0.  1.]
+ [ 0.  1.  0.]]
+Source before centering:
+[ 2.402757e-14 -1.900000e+02  1.962000e+02]
+Source after centering:
+[ 6.712006e-15 -1.900000e+02  0.000000e+00]
+Beam direction:
+[-3.532635e-17  1.000000e+00 -2.220446e-16]
+Removed perpendicular offset:
+[1.7315564e-14 0.0000000e+00 1.9620000e+02]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[-3.445093e-16 -1.000000e+00 -3.532635e-17  6.712006e-15]
+ [-2.220446e-16 -3.532635e-17  1.000000e+00 -1.900000e+02]
+ [-1.000000e+00  3.445093e-16 -2.220446e-16  0.000000e+00]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_06_score_0.000_XmX_YpZ_ZpY.png
+
+Rank: 13
+Candidate: 07
+Mapping: X=+X, Y=-Z, Z=+Y
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[ 1.  0.  0.]
+ [ 0.  0. -1.]
+ [ 0.  1.  0.]]
+Source before centering:
+[-2.402757e-14  1.900000e+02  1.962000e+02]
+Source after centering:
+[-6.712006e-15  1.900000e+02  0.000000e+00]
+Beam direction:
+[ 3.532635e-17 -1.000000e+00 -2.220446e-16]
+Removed perpendicular offset:
+[-1.7315564e-14  0.0000000e+00  1.9620000e+02]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[ 3.445093e-16  1.000000e+00  3.532635e-17 -6.712006e-15]
+ [ 2.220446e-16  3.532635e-17 -1.000000e+00  1.900000e+02]
+ [-1.000000e+00  3.445093e-16 -2.220446e-16  0.000000e+00]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_07_score_0.000_XpX_YmZ_ZpY.png
+
+Rank: 14
+Candidate: 08
+Mapping: X=+X, Y=+Z, Z=-Y
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[ 1.  0.  0.]
+ [ 0.  0.  1.]
+ [ 0. -1.  0.]]
+Source before centering:
+[-2.402757e-14 -1.900000e+02 -1.962000e+02]
+Source after centering:
+[-6.712006e-15 -1.900000e+02  0.000000e+00]
+Beam direction:
+[3.532635e-17 1.000000e+00 2.220446e-16]
+Removed perpendicular offset:
+[-1.7315564e-14  0.0000000e+00 -1.9620000e+02]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[ 3.445093e-16  1.000000e+00  3.532635e-17 -6.712006e-15]
+ [-2.220446e-16 -3.532635e-17  1.000000e+00 -1.900000e+02]
+ [ 1.000000e+00 -3.445093e-16  2.220446e-16  0.000000e+00]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_08_score_0.000_XpX_YpZ_ZmY.png
+
+Rank: 15
+Candidate: 09
+Mapping: X=-Y, Y=-X, Z=-Z
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[ 0. -1.  0.]
+ [-1.  0.  0.]
+ [ 0.  0. -1.]]
+Source before centering:
+[-1.962000e+02  2.402757e-14  1.900000e+02]
+Source after centering:
+[0.000000e+00 6.712006e-15 1.900000e+02]
+Beam direction:
+[ 2.220446e-16 -3.532635e-17 -1.000000e+00]
+Removed perpendicular offset:
+[-1.9620000e+02  1.7315564e-14  0.0000000e+00]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[ 1.000000e+00 -3.445093e-16  2.220446e-16  0.000000e+00]
+ [-3.445093e-16 -1.000000e+00 -3.532635e-17  6.712006e-15]
+ [ 2.220446e-16  3.532635e-17 -1.000000e+00  1.900000e+02]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_09_score_0.000_XmY_YmX_ZmZ.png
+
+Rank: 16
+Candidate: 10
+Mapping: X=-Y, Y=+X, Z=+Z
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[ 0. -1.  0.]
+ [ 1.  0.  0.]
+ [ 0.  0.  1.]]
+Source before centering:
+[-1.962000e+02 -2.402757e-14 -1.900000e+02]
+Source after centering:
+[ 0.000000e+00 -6.712006e-15 -1.900000e+02]
+Beam direction:
+[2.220446e-16 3.532635e-17 1.000000e+00]
+Removed perpendicular offset:
+[-1.9620000e+02 -1.7315564e-14  0.0000000e+00]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[ 1.000000e+00 -3.445093e-16  2.220446e-16  0.000000e+00]
+ [ 3.445093e-16  1.000000e+00  3.532635e-17 -6.712006e-15]
+ [-2.220446e-16 -3.532635e-17  1.000000e+00 -1.900000e+02]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_10_score_0.000_XmY_YpX_ZpZ.png
+
+Rank: 17
+Candidate: 11
+Mapping: X=+Y, Y=-X, Z=+Z
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[ 0.  1.  0.]
+ [-1.  0.  0.]
+ [ 0.  0.  1.]]
+Source before centering:
+[ 1.962000e+02  2.402757e-14 -1.900000e+02]
+Source after centering:
+[ 0.000000e+00  6.712006e-15 -1.900000e+02]
+Beam direction:
+[-2.220446e-16 -3.532635e-17  1.000000e+00]
+Removed perpendicular offset:
+[1.9620000e+02 1.7315564e-14 0.0000000e+00]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[-1.000000e+00  3.445093e-16 -2.220446e-16  0.000000e+00]
+ [-3.445093e-16 -1.000000e+00 -3.532635e-17  6.712006e-15]
+ [-2.220446e-16 -3.532635e-17  1.000000e+00 -1.900000e+02]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_11_score_0.000_XpY_YmX_ZpZ.png
+
+Rank: 18
+Candidate: 12
+Mapping: X=+Y, Y=+X, Z=-Z
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[ 0.  1.  0.]
+ [ 1.  0.  0.]
+ [ 0.  0. -1.]]
+Source before centering:
+[ 1.962000e+02 -2.402757e-14  1.900000e+02]
+Source after centering:
+[ 0.000000e+00 -6.712006e-15  1.900000e+02]
+Beam direction:
+[-2.220446e-16  3.532635e-17 -1.000000e+00]
+Removed perpendicular offset:
+[ 1.9620000e+02 -1.7315564e-14  0.0000000e+00]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[-1.000000e+00  3.445093e-16 -2.220446e-16  0.000000e+00]
+ [ 3.445093e-16  1.000000e+00  3.532635e-17 -6.712006e-15]
+ [ 2.220446e-16  3.532635e-17 -1.000000e+00  1.900000e+02]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_12_score_0.000_XpY_YpX_ZmZ.png
+
+Rank: 19
+Candidate: 13
+Mapping: X=-Y, Y=-Z, Z=+X
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[ 0. -1.  0.]
+ [ 0.  0. -1.]
+ [ 1.  0.  0.]]
+Source before centering:
+[-1.962000e+02  1.900000e+02 -2.402757e-14]
+Source after centering:
+[ 0.000000e+00  1.900000e+02 -6.712006e-15]
+Beam direction:
+[ 2.220446e-16 -1.000000e+00  3.532635e-17]
+Removed perpendicular offset:
+[-1.9620000e+02  0.0000000e+00 -1.7315564e-14]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[ 1.000000e+00 -3.445093e-16  2.220446e-16  0.000000e+00]
+ [ 2.220446e-16  3.532635e-17 -1.000000e+00  1.900000e+02]
+ [ 3.445093e-16  1.000000e+00  3.532635e-17 -6.712006e-15]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_13_score_0.000_XmY_YmZ_ZpX.png
+
+Rank: 20
+Candidate: 15
+Mapping: X=+Y, Y=-Z, Z=-X
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[ 0.  1.  0.]
+ [ 0.  0. -1.]
+ [-1.  0.  0.]]
+Source before centering:
+[1.962000e+02 1.900000e+02 2.402757e-14]
+Source after centering:
+[0.000000e+00 1.900000e+02 6.712006e-15]
+Beam direction:
+[-2.220446e-16 -1.000000e+00 -3.532635e-17]
+Removed perpendicular offset:
+[1.9620000e+02 0.0000000e+00 1.7315564e-14]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[-1.000000e+00  3.445093e-16 -2.220446e-16  0.000000e+00]
+ [ 2.220446e-16  3.532635e-17 -1.000000e+00  1.900000e+02]
+ [-3.445093e-16 -1.000000e+00 -3.532635e-17  6.712006e-15]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_15_score_0.000_XpY_YmZ_ZmX.png
+
+Rank: 21
+Candidate: 17
+Mapping: X=-Z, Y=-X, Z=+Y
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[ 0.  0. -1.]
+ [-1.  0.  0.]
+ [ 0.  1.  0.]]
+Source before centering:
+[1.900000e+02 2.402757e-14 1.962000e+02]
+Source after centering:
+[1.900000e+02 6.712006e-15 0.000000e+00]
+Beam direction:
+[-1.000000e+00 -3.532635e-17 -2.220446e-16]
+Removed perpendicular offset:
+[0.0000000e+00 1.7315564e-14 1.9620000e+02]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[ 2.220446e-16  3.532635e-17 -1.000000e+00  1.900000e+02]
+ [-3.445093e-16 -1.000000e+00 -3.532635e-17  6.712006e-15]
+ [-1.000000e+00  3.445093e-16 -2.220446e-16  0.000000e+00]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_17_score_0.000_XmZ_YmX_ZpY.png
+
+Rank: 22
+Candidate: 18
+Mapping: X=-Z, Y=+X, Z=-Y
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[ 0.  0. -1.]
+ [ 1.  0.  0.]
+ [ 0. -1.  0.]]
+Source before centering:
+[ 1.900000e+02 -2.402757e-14 -1.962000e+02]
+Source after centering:
+[ 1.900000e+02 -6.712006e-15  0.000000e+00]
+Beam direction:
+[-1.000000e+00  3.532635e-17  2.220446e-16]
+Removed perpendicular offset:
+[ 0.0000000e+00 -1.7315564e-14 -1.9620000e+02]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[ 2.220446e-16  3.532635e-17 -1.000000e+00  1.900000e+02]
+ [ 3.445093e-16  1.000000e+00  3.532635e-17 -6.712006e-15]
+ [ 1.000000e+00 -3.445093e-16  2.220446e-16  0.000000e+00]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_18_score_0.000_XmZ_YpX_ZmY.png
+
+Rank: 23
+Candidate: 19
+Mapping: X=+Z, Y=-X, Z=-Y
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[ 0.  0.  1.]
+ [-1.  0.  0.]
+ [ 0. -1.  0.]]
+Source before centering:
+[-1.900000e+02  2.402757e-14 -1.962000e+02]
+Source after centering:
+[-1.900000e+02  6.712006e-15  0.000000e+00]
+Beam direction:
+[ 1.000000e+00 -3.532635e-17  2.220446e-16]
+Removed perpendicular offset:
+[ 0.0000000e+00  1.7315564e-14 -1.9620000e+02]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[-2.220446e-16 -3.532635e-17  1.000000e+00 -1.900000e+02]
+ [-3.445093e-16 -1.000000e+00 -3.532635e-17  6.712006e-15]
+ [ 1.000000e+00 -3.445093e-16  2.220446e-16  0.000000e+00]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_19_score_0.000_XpZ_YmX_ZmY.png
+
+Rank: 24
+Candidate: 20
+Mapping: X=+Z, Y=+X, Z=+Y
+Score: 0.0
+Nonzero fraction: 0.0
+Minimum: 0.0
+Maximum: 0.0
+Mean: 0.0
+Standard deviation: 0.0
+Total intensity: 0.0
+Calibration rotation:
+[[0. 0. 1.]
+ [1. 0. 0.]
+ [0. 1. 0.]]
+Source before centering:
+[-1.900000e+02 -2.402757e-14  1.962000e+02]
+Source after centering:
+[-1.900000e+02 -6.712006e-15  0.000000e+00]
+Beam direction:
+[ 1.000000e+00  3.532635e-17 -2.220446e-16]
+Removed perpendicular offset:
+[ 0.0000000e+00 -1.7315564e-14  1.9620000e+02]
+Removed offset magnitude (mm): 196.1999969482422
+Remaining perpendicular offset (mm): 4.218847493575595e-14
+Camera-to-DiffDRR transform:
+[[-2.220446e-16 -3.532635e-17  1.000000e+00 -1.900000e+02]
+ [ 3.445093e-16  1.000000e+00  3.532635e-17 -6.712006e-15]
+ [-1.000000e+00  3.445093e-16 -2.220446e-16  0.000000e+00]
+ [ 0.000000e+00  0.000000e+00  0.000000e+00  1.000000e+00]]
+Image: C:\Users\suhai\Downloads\C_arm_guidance_APAH-main (1)\C_arm_guidance_APAH-main\python\axis_calibration\candidate_20_score_0.000_XpZ_YpX_ZpY.png
+

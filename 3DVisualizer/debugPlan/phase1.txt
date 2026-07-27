@@ -1,0 +1,17 @@
+Right now exposure can use slightly old anatomy/hit information because beam classification is only refreshed on the timed loop. That is a correctness bug.
+
+
+
+Run only these checks for Phase 1:
+
+App still loads normally.
+
+Move the C-arm, then press expose immediately.
+
+Repeat that a few times with noticeably different positions.
+
+Confirm there is no crash and no UI regression.
+
+Confirm beam region logic still updates in debug mode.
+
+Confirm exposure still generates image and CSV.

@@ -1,0 +1,46 @@
+Phase 2 goal
+
+Clean up the exposure pipeline without changing visible behavior.
+
+Specifically:
+
+make generateRealisticXray() a pure renderer
+
+remove its React state side effect
+
+fix the mismatch between how it is called and what it actually uses
+
+This is a hygiene phase, not a visual phase.
+
+Why this matters
+
+Right now generateRealisticXray() is doing two jobs:
+
+rendering the X-ray image
+
+updating React state with setCurrentAnatomy(...)
+
+That coupling is fragile. A renderer should return image data only.
+
+Also, handleTakeXray() passes regionKeyAtShot, but the generator does not meaningfully use it. That is misleading and should be cleaned up carefully.
+
+Checkpoint first
+git add .
+git commit -m "before-phase-2-exposure-pipeline-cleanup"
+
+
+Run only these checks:
+
+App loads normally.
+
+Expose still works.
+
+The generated X-ray still appears as before.
+
+Download X-ray still works.
+
+No new console errors.
+
+Debug panel still works with D.
+
+CSV still downloads on exposure.
