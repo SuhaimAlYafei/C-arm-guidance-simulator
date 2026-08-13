@@ -2614,7 +2614,7 @@ const App = () => {
             setCurrentAnatomy('PROCESSING...');
 
             const response = await fetch(
-                'https://c-arm-guidance-simulator.onrender.com/synthetic-xray',
+                'https://c-arm-synthetic-xray.onrender.com/synthetic-xray',
                 {
                     method: 'POST',
                     headers: {
