@@ -2530,17 +2530,16 @@ const App = () => {
     };
 
     const handleTakeXray = async () => {
+        // SYNTHETIC_XRAY_ENDPOINT: AI exposure path only. Planner and C-arm geometry stay untouched.
         const shotControls = { ...controls };
 
         let regionKeyAtShot = "miss";
-
         if (srcAnchorRef.current && detAnchorRef.current) {
             srcAnchorRef.current.updateMatrixWorld(true);
             detAnchorRef.current.updateMatrixWorld(true);
 
             const worldSource = new THREE.Vector3();
             const worldDetector = new THREE.Vector3();
-
             srcAnchorRef.current.getWorldPosition(worldSource);
             detAnchorRef.current.getWorldPosition(worldDetector);
 
@@ -2550,10 +2549,7 @@ const App = () => {
                 patientModelRef.current,
                 patientBoundsRef.current
             );
-
-            regionKeyAtShot = classification.hit
-                ? classification.zoneKey
-                : "miss";
+            regionKeyAtShot = classification.hit ? classification.zoneKey : "miss";
         }
 
         const geometry = captureExposureGeometry(
@@ -2567,12 +2563,40 @@ const App = () => {
             return;
         }
 
+        const anatomyInfo = ANATOMICAL_TARGETS[selectedAnatomy] || ANATOMICAL_TARGETS.MANUAL;
+        const projection = getProjectionConfig(
+            selectedProjection,
+            anatomyInfo,
+            plannerObliqueAngle
+        );
+
+        const anatomyLabel =
+            anatomyInfo?.shortLabel
+            || anatomyInfo?.label
+            || anatomyInfo?.regionLabel
+            || regionKeyAtShot
+            || 'anatomy';
+
+        const fullAnatomyText = [
+            anatomyInfo?.label,
+            anatomyInfo?.regionLabel,
+            anatomyLabel
+        ].filter(Boolean).join(' ');
+
+        const laterality = /\bleft\b/i.test(fullAnatomyText)
+            ? 'left'
+            : /\bright\b/i.test(fullAnatomyText)
+                ? 'right'
+                : null;
+
+        const angulationDirection = selectedProjection === 'CAUDAL'
+            ? 'caudal'
+            : selectedProjection === 'CRANIAL'
+                ? 'cranial'
+                : null;
+
         const now = new Date();
-
-        const sampleId = `sample_${now
-            .toISOString()
-            .replace(/[:.]/g, "-")}`;
-
+        const sampleId = `sample_${now.toISOString().replace(/[:.]/g, "-")}`;
         const annotation = {
             sample_id: sampleId,
             image_filename: `${sampleId}.png`,
@@ -2581,157 +2605,101 @@ const App = () => {
         };
 
         setBeamActive(true);
+        setCurrentAnatomy('ACQUIRING...');
 
         try {
-            console.log(
-                "Sending exposure to DiffDRR server:",
-                annotation
-            );
+            // Brief acquisition phase so exposure behaves like an imaging workflow,
+            // while the actual generation time provides the processing delay.
+            await new Promise(resolve => setTimeout(resolve, 650));
+            setCurrentAnatomy('PROCESSING...');
 
             const response = await fetch(
-                "https://c-arm-guidance-simulator.onrender.com/render",
+                'https://c-arm-guidance-simulator.onrender.com/synthetic-xray',
                 {
-                    method: "POST",
+                    method: 'POST',
                     headers: {
-                        "Content-Type": "application/json"
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json'
                     },
                     body: JSON.stringify({
-                        exposure: annotation
+                        anatomy: anatomyLabel,
+                        view: projection?.label || selectedProjection || 'AP',
+                        laterality,
+                        angulation_deg: Number.isFinite(Number(projection?.angleDeg))
+                            ? Number(projection.angleDeg)
+                            : 0,
+                        angulation_direction: angulationDirection
                     })
                 }
             );
 
             if (!response.ok) {
-                let message =
-                    `Render server returned HTTP ${response.status}`;
-
+                let message = `Synthetic X-ray server returned HTTP ${response.status}`;
                 try {
                     const errorData = await response.json();
-
-                    if (errorData.detail) {
-                        message = String(errorData.detail);
-                    }
+                    if (errorData?.detail) message = String(errorData.detail);
                 } catch {
-                    // Ignore JSON parsing failure and keep the HTTP message.
+                    // Keep the HTTP message when the response is not JSON.
                 }
-
                 throw new Error(message);
             }
 
             const result = await response.json();
-
             if (!result.image_base64 || !result.mime_type) {
-                throw new Error(
-                    "The render server did not return a valid image."
-                );
+                throw new Error('Synthetic X-ray server returned no usable image.');
             }
 
-            if (result.dataset_id !== CT_DATASET_ID) {
-                throw new Error(
-                    `Wrong CT dataset returned by renderer. `
-                    + `Expected ${CT_DATASET_ID}, received `
-                    + `${result.dataset_id || 'missing dataset ID'}.`
-                );
-            }
-
-            const xrayDataUrl =
-                `data:${result.mime_type};base64,${result.image_base64}`;
-
+            const xrayDataUrl = `data:${result.mime_type};base64,${result.image_base64}`;
             const completedAnnotation = {
                 ...annotation,
                 renderer: {
-                    dataset_id: result.dataset_id,
-                    resolved_ct_path: result.ct_path,
-                    selected_landmark:
-                        result.selected_landmark
-                        || annotation.selected_landmark
+                    mode: 'ai_synthetic_radiograph',
+                    provider: result.source || 'cloudflare_workers_ai',
+                    model: result.model || 'unknown',
+                    synthetic: true,
+                    requested_anatomy: anatomyLabel,
+                    requested_view: projection?.label || selectedProjection || 'AP',
+                    laterality,
+                    angulation_deg: Number(projection?.angleDeg || 0),
+                    angulation_direction: angulationDirection
                 }
             };
 
             setLastXray(xrayDataUrl);
-            setCurrentAnatomy(
-                (
-                    ANATOMICAL_TARGETS[selectedAnatomy]?.shortLabel
-                    || selectedAnatomy
-                ).toUpperCase()
-            );
+            setCurrentAnatomy(String(anatomyLabel).toUpperCase());
 
-            downloadDataUrl(
-                xrayDataUrl,
-                `${sampleId}.png`
-            );
-
+            downloadDataUrl(xrayDataUrl, `${sampleId}_AI_SYNTHETIC.png`);
             setTimeout(() => {
-                downloadJson(
-                    completedAnnotation,
-                    `${sampleId}.json`
-                );
+                downloadJson(completedAnnotation, `${sampleId}_AI_SYNTHETIC.json`);
             }, 150);
 
-            console.log(
-                "Real DiffDRR exposure generated:",
-                completedAnnotation
-            );
+            console.log('AI synthetic exposure generated:', completedAnnotation);
         } catch (error) {
-            console.error(
-                "DiffDRR exposure generation failed:",
-                error
+            console.error('AI synthetic exposure generation failed:', error);
+
+            // Safe demo fallback: preserve the existing landmark-aware atlas image
+            // instead of leaving the monitor blank when the free AI service is unavailable.
+            const fallbackDataUrl = generateLandmarkAtlasXray(
+                selectedAnatomy,
+                selectedProjection
             );
 
-            const errorMessage = error?.message || String(error);
-            const missingRegisteredCt =
-                /registered head\/neck CT dataset was not found/i.test(errorMessage)
-                || /required dataset:\s*case-112016_BONE_H-N-UXT_3X3/i.test(errorMessage)
-                || /ct_missing/i.test(errorMessage);
+            const fallbackAnnotation = {
+                ...annotation,
+                renderer: {
+                    mode: 'synthetic_landmark_atlas_fallback',
+                    dataset_id: 'skeleton_atlas_v1',
+                    selected_landmark: annotation.selected_landmark,
+                    reason: error?.message || String(error)
+                }
+            };
 
-            if (missingRegisteredCt) {
-                const fallbackDataUrl = generateLandmarkAtlasXray(
-                    selectedAnatomy,
-                    selectedProjection
-                );
-
-                const fallbackAnnotation = {
-                    ...annotation,
-                    renderer: {
-                        mode: 'synthetic_landmark_atlas_fallback',
-                        dataset_id: 'skeleton_atlas_v1',
-                        selected_landmark: annotation.selected_landmark,
-                        reason: errorMessage
-                    }
-                };
-
-                setLastXray(fallbackDataUrl);
-                setCurrentAnatomy(
-                    (
-                        ANATOMICAL_TARGETS[selectedAnatomy]?.shortLabel
-                        || selectedAnatomy
-                    ).toUpperCase()
-                );
-
-                downloadDataUrl(
-                    fallbackDataUrl,
-                    `${sampleId}_SIMULATED_ATLAS.png`
-                );
-
-                setTimeout(() => {
-                    downloadJson(
-                        fallbackAnnotation,
-                        `${sampleId}_SIMULATED_ATLAS.json`
-                    );
-                }, 150);
-
-                console.warn(
-                    "Registered CT missing; generated landmark-aware simulated atlas exposure:",
-                    fallbackAnnotation
-                );
-            } else {
-                alert(
-                    "DiffDRR rendering failed.\n\n"
-                    + errorMessage
-                    + "\n\nMake sure the Python server is running at "
-                    + "https://c-arm-guidance-simulator.onrender.com"
-                );
-            }
+            setLastXray(fallbackDataUrl);
+            setCurrentAnatomy(String(anatomyLabel).toUpperCase());
+            downloadDataUrl(fallbackDataUrl, `${sampleId}_SIMULATED_ATLAS.png`);
+            setTimeout(() => {
+                downloadJson(fallbackAnnotation, `${sampleId}_SIMULATED_ATLAS.json`);
+            }, 150);
         } finally {
             setBeamActive(false);
         }
