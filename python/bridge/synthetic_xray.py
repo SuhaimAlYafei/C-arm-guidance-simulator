@@ -49,13 +49,11 @@ def _is_left_hand_frontal(request: SyntheticXrayRequest) -> bool:
     return is_hand and is_left and is_frontal
 
 
-def _read_reference_image(request: SyntheticXrayRequest) -> bytes | None:
+def _reference_path(request: SyntheticXrayRequest) -> Path | None:
     if not _is_left_hand_frontal(request):
         return None
     path = REFERENCE_DIR / "left_hand_ap.png"
-    if not path.exists():
-        return None
-    return path.read_bytes()
+    return path if path.exists() else None
 
 
 def build_prompt(
@@ -64,7 +62,6 @@ def build_prompt(
     laterality: str | None = None,
     angulation_deg: float | None = None,
     angulation_direction: str | None = None,
-    using_reference: bool = False,
 ) -> str:
     laterality_text = laterality or "unspecified"
     angle_text = (
@@ -73,19 +70,6 @@ def build_prompt(
         else "none"
     )
     direction_text = angulation_direction or "none"
-
-    if using_reference:
-        return (
-            "Preserve the anatomy and projection of the supplied reference radiograph. "
-            f"Requested anatomy: {anatomy}. Laterality: {laterality_text}. View: {view}. "
-            f"C-arm angulation: {angle_text}; direction: {direction_text}. "
-            "Make only subtle detector-style variation: small changes in exposure, contrast, "
-            "grain/noise, and very slight positioning. Keep exactly one hand, five digits, the "
-            "same wrist and carpal relationships, and the same frontal projection. Do not add "
-            "or remove bones. No skull, no torso, no extra limbs, no collage, no diagrams, no "
-            "text, no labels, no arrows, no UI. Output a single realistic grayscale fluoroscopy/"
-            "radiograph image only."
-        )
 
     return (
         "Single synthetic educational grayscale radiograph only. "
@@ -104,7 +88,7 @@ def _cloudflare_endpoint(account_id: str) -> str:
     )
 
 
-def generate_image(prompt: str, reference_bytes: bytes | None = None) -> tuple[str, str]:
+def generate_image(prompt: str) -> tuple[str, str]:
     account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
     api_token = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
     if not account_id or not api_token:
@@ -122,11 +106,6 @@ def generate_image(prompt: str, reference_bytes: bytes | None = None) -> tuple[s
         "width": 1024,
         "height": 1024,
     }
-
-    if reference_bytes:
-        payload["image_b64"] = base64.b64encode(reference_bytes).decode("ascii")
-        payload["strength"] = 0.12
-        payload["guidance"] = 7.0
 
     response = requests.post(
         _cloudflare_endpoint(account_id),
@@ -167,23 +146,39 @@ def synthetic_xray_health() -> dict[str, Any]:
         "provider": "cloudflare_workers_ai",
         "model": CLOUDFLARE_IMAGE_MODEL,
         "left_hand_ap_reference": reference_path.exists(),
+        "left_hand_ap_mode": "verified_reference",
     }
 
 
 @router.post("/synthetic-xray", response_model=SyntheticXrayResponse)
 def synthetic_xray(request: SyntheticXrayRequest) -> SyntheticXrayResponse:
-    reference_bytes = _read_reference_image(request)
+    reference_path = _reference_path(request)
+
+    # For the validated Left Hand frontal view, return the verified reference directly.
+    # This avoids generative anatomical hallucinations and keeps the demo deterministic.
+    if reference_path is not None:
+        image_base64 = base64.b64encode(reference_path.read_bytes()).decode("ascii")
+        return SyntheticXrayResponse(
+            image_base64=image_base64,
+            mime_type="image/png",
+            source="verified_reference_radiograph",
+            model="none",
+            synthetic=False,
+            anatomy=request.anatomy,
+            view=request.view,
+            reference_used=True,
+        )
+
     prompt = build_prompt(
         anatomy=request.anatomy,
         view=request.view,
         laterality=request.laterality,
         angulation_deg=request.angulation_deg,
         angulation_direction=request.angulation_direction,
-        using_reference=reference_bytes is not None,
     )
 
     try:
-        image_base64, mime_type = generate_image(prompt, reference_bytes)
+        image_base64, mime_type = generate_image(prompt)
     except RuntimeError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
     except requests.HTTPError as error:
@@ -203,14 +198,10 @@ def synthetic_xray(request: SyntheticXrayRequest) -> SyntheticXrayResponse:
     return SyntheticXrayResponse(
         image_base64=image_base64,
         mime_type=mime_type,
-        source=(
-            "cloudflare_sdxl_reference_img2img"
-            if reference_bytes is not None
-            else "cloudflare_sdxl_lightning"
-        ),
+        source="cloudflare_sdxl_lightning",
         model=CLOUDFLARE_IMAGE_MODEL,
         synthetic=True,
         anatomy=request.anatomy,
         view=request.view,
-        reference_used=reference_bytes is not None,
+        reference_used=False,
     )
