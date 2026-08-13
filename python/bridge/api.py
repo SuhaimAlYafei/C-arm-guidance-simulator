@@ -44,6 +44,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://c-arm-guidance-simulator.vercel.app",
+        "https://c-armsim.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
