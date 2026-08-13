@@ -74,10 +74,15 @@ def generate_image(prompt: str) -> tuple[str, str]:
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {
                 "responseModalities": ["IMAGE"],
-                "imageConfig": {"aspectRatio": "1:1"},
+                "responseFormat": {
+                    "image": {
+                        "aspectRatio": "1:1",
+                        "imageSize": "1K",
+                    }
+                },
             },
         },
-        timeout=90,
+        timeout=120,
     )
     response.raise_for_status()
     payload: dict[str, Any] = response.json()
