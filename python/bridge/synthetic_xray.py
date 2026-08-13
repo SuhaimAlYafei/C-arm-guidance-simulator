@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import os
 from typing import Any
 
@@ -7,11 +8,7 @@ import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image"
-GEMINI_IMAGE_ENDPOINT = (
-    "https://generativelanguage.googleapis.com/v1/models/"
-    f"{GEMINI_IMAGE_MODEL}:generateContent"
-)
+CLOUDFLARE_IMAGE_MODEL = "@cf/bytedance/stable-diffusion-xl-lightning"
 
 router = APIRouter()
 
@@ -50,65 +47,72 @@ def build_prompt(
     direction_text = angulation_direction or "none"
 
     return (
-        "Create a synthetic educational radiograph-style image for a C-arm simulator. "
-        f"Anatomy: {anatomy}. Laterality: {laterality_text}. View: {view}. "
-        f"Angulation: {angle_text}; direction: {direction_text}. "
-        "Center the requested anatomy in a square grayscale fluoroscopy field. "
-        "Use realistic normal anatomy and radiographic contrast. Do not add text, "
-        "labels, arrows, interface elements, or unrelated anatomy."
+        "Synthetic educational medical radiograph, fluoroscopy image, grayscale X-ray. "
+        f"Anatomy: {anatomy}. Laterality: {laterality_text}. Projection/view: {view}. "
+        f"C-arm angulation: {angle_text}; direction: {direction_text}. "
+        "Center only the requested anatomy in the detector field. Realistic normal skeletal "
+        "anatomy, radiographic bone and soft-tissue contrast, clinical fluoroscopy appearance, "
+        "black background, no text, no labels, no arrows, no UI, no unrelated anatomy."
+    )
+
+
+def _cloudflare_endpoint(account_id: str) -> str:
+    return (
+        f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/"
+        f"{CLOUDFLARE_IMAGE_MODEL}"
     )
 
 
 def generate_image(prompt: str) -> tuple[str, str]:
-    api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    if not api_key:
-        raise RuntimeError("GEMINI_API_KEY is not configured")
+    account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
+    api_token = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
+    if not account_id or not api_token:
+        raise RuntimeError(
+            "CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN is not configured"
+        )
 
     response = requests.post(
-        GEMINI_IMAGE_ENDPOINT,
+        _cloudflare_endpoint(account_id),
         headers={
-            "x-goog-api-key": api_key,
+            "Authorization": f"Bearer {api_token}",
             "Content-Type": "application/json",
         },
         json={
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "responseModalities": ["IMAGE"],
-                "responseFormat": {
-                    "image": {
-                        "aspectRatio": "1:1",
-                        "imageSize": "1K",
-                    }
-                },
-            },
+            "prompt": prompt,
+            "num_steps": 4,
+            "width": 1024,
+            "height": 1024,
         },
         timeout=120,
     )
     response.raise_for_status()
+
+    content_type = response.headers.get("content-type", "").split(";", 1)[0].strip()
+    if content_type.startswith("image/"):
+        return base64.b64encode(response.content).decode("ascii"), content_type
+
     payload: dict[str, Any] = response.json()
+    result = payload.get("result")
 
-    for candidate in payload.get("candidates", []):
-        for part in (candidate.get("content") or {}).get("parts", []):
-            inline_data = part.get("inlineData") or part.get("inline_data")
-            if not inline_data:
-                continue
-            data = inline_data.get("data")
-            if data:
-                mime_type = (
-                    inline_data.get("mimeType")
-                    or inline_data.get("mime_type")
-                    or "image/png"
-                )
-                return str(data), str(mime_type)
+    if isinstance(result, str) and result:
+        return result, "image/png"
 
-    raise RuntimeError("Image provider returned no image data")
+    if isinstance(result, dict):
+        image_data = result.get("image") or result.get("data")
+        if isinstance(image_data, str) and image_data:
+            return image_data, str(result.get("mime_type") or "image/png")
+
+    raise RuntimeError("Cloudflare Workers AI returned no image data")
 
 
 @router.get("/synthetic-xray/health")
 def synthetic_xray_health() -> dict[str, Any]:
+    account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
+    api_token = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
     return {
-        "configured": bool(os.getenv("GEMINI_API_KEY", "").strip()),
-        "model": GEMINI_IMAGE_MODEL,
+        "configured": bool(account_id and api_token),
+        "provider": "cloudflare_workers_ai",
+        "model": CLOUDFLARE_IMAGE_MODEL,
     }
 
 
@@ -127,21 +131,24 @@ def synthetic_xray(request: SyntheticXrayRequest) -> SyntheticXrayResponse:
     except RuntimeError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
     except requests.HTTPError as error:
-        detail = "Image provider returned an error"
+        detail = "Cloudflare Workers AI returned an error"
         if error.response is not None:
-            detail = f"Image provider HTTP {error.response.status_code}: {error.response.text[:800]}"
+            detail = (
+                f"Cloudflare Workers AI HTTP {error.response.status_code}: "
+                f"{error.response.text[:800]}"
+            )
         raise HTTPException(status_code=502, detail=detail) from error
     except requests.RequestException as error:
         raise HTTPException(
             status_code=502,
-            detail=f"Image provider request failed: {error}",
+            detail=f"Cloudflare Workers AI request failed: {error}",
         ) from error
 
     return SyntheticXrayResponse(
         image_base64=image_base64,
         mime_type=mime_type,
-        source="gemini_synthetic_image",
-        model=GEMINI_IMAGE_MODEL,
+        source="cloudflare_sdxl_lightning",
+        model=CLOUDFLARE_IMAGE_MODEL,
         synthetic=True,
         anatomy=request.anatomy,
         view=request.view,
