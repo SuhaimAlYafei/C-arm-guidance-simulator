@@ -5,9 +5,7 @@ internal consistency of the deterministic simulator across randomized starting
 poses, targets, projections, and waypoint counts.
 
 Run from repository root:
-    python evaluation/simulated_validation.py --trials 1000 --seed 23112
-
-Outputs CSV + JSON summaries under results/simulated_validation/ by default.
+    py evaluation/simulated_validation.py --trials 1000 --seed 23112
 """
 from __future__ import annotations
 
@@ -37,11 +35,18 @@ from bridge.planner.pose_solver import (
 )
 
 VIEWS = ("AP", "PA", "LAT_LEFT", "LAT_RIGHT", "OBLIQUE")
+POSE_TOL = 1e-9
 
 
 def angle_error_deg(a: float, b: float) -> float:
     d = (a - b + math.pi) % (2 * math.pi) - math.pi
     return abs(math.degrees(d))
+
+
+def pose_max_abs_error(a: CArmPose, b: CArmPose) -> float:
+    return max(abs(getattr(a, name) - getattr(b, name)) for name in (
+        "lift", "column_rot", "wig_wag", "orbital_slide", "cart_x", "cart_z"
+    ))
 
 
 def pose_path_length(start: CArmPose, end: CArmPose) -> tuple[float, float]:
@@ -70,7 +75,7 @@ def random_pose(rng: random.Random) -> CArmPose:
 
 
 def random_target(rng: random.Random) -> TargetPoint:
-    # Covers the calibrated mannequin envelope plus near-boundary stress cases.
+    # Calibrated envelope plus near-boundary stress cases.
     return TargetPoint(
         x_mm=rng.uniform(-430.0, 430.0),
         y_mm=rng.uniform(-820.0, 870.0),
@@ -101,11 +106,24 @@ def run_trial(rng: random.Random, index: int) -> dict:
     angular_error = angle_error_deg(solution.final_pose.orbital_slide, requested_angle)
 
     linear_path_m, angular_path_deg = pose_path_length(start, solution.final_pose)
-    endpoint_exact = path[0].pose == start and path[-1].pose == solution.final_pose
+    start_endpoint_error = pose_max_abs_error(path[0].pose, start)
+    final_endpoint_error = pose_max_abs_error(path[-1].pose, solution.final_pose)
+    endpoints_within_tolerance = start_endpoint_error <= POSE_TOL and final_endpoint_error <= POSE_TOL
     monotonic = all(path[i].progress <= path[i + 1].progress for i in range(len(path) - 1))
 
-    # Software-only success criterion. This deliberately does not claim physical accuracy.
-    success = position_error_mm <= 1.0 and angular_error <= 0.1 and endpoint_exact and monotonic
+    position_ok = position_error_mm <= 1.0
+    angle_ok = angular_error <= 0.1
+    success = position_ok and angle_ok and endpoints_within_tolerance and monotonic
+
+    failure_reasons = []
+    if not position_ok:
+        failure_reasons.append("position_residual")
+    if not angle_ok:
+        failure_reasons.append("angular_residual")
+    if not endpoints_within_tolerance:
+        failure_reasons.append("path_endpoint")
+    if not monotonic:
+        failure_reasons.append("non_monotonic_progress")
 
     return {
         "trial": index,
@@ -127,8 +145,11 @@ def run_trial(rng: random.Random, index: int) -> dict:
         "mechanical_feasibility": confidence.mechanical_feasibility,
         "path_smoothness": confidence.path_smoothness,
         "registration_certainty": confidence.registration_certainty,
-        "endpoint_exact": endpoint_exact,
+        "start_endpoint_error": start_endpoint_error,
+        "final_endpoint_error": final_endpoint_error,
+        "endpoints_within_tolerance": endpoints_within_tolerance,
         "progress_monotonic": monotonic,
+        "failure_reasons": ";".join(failure_reasons),
         "success": success,
     }
 
@@ -144,8 +165,6 @@ def pearson(xs: list[float], ys: list[float]) -> float | None:
 
 def percentile(values: list[float], p: float) -> float:
     ordered = sorted(values)
-    if not ordered:
-        return float("nan")
     k = (len(ordered) - 1) * p
     lo, hi = math.floor(k), math.ceil(k)
     if lo == hi:
@@ -175,16 +194,34 @@ def summarize(rows: list[dict], seed: int) -> dict:
     times = [r["planning_time_ms"] for r in rows]
     confidences = [r["confidence"] for r in rows]
     successes = [1.0 if r["success"] else 0.0 for r in rows]
+
+    reason_counts: dict[str, int] = {}
+    for row in rows:
+        for reason in filter(None, row["failure_reasons"].split(";")):
+            reason_counts[reason] = reason_counts.get(reason, 0) + 1
+
+    by_view = {}
+    for view in VIEWS:
+        group = [r for r in rows if r["view"] == view]
+        by_view[view] = {
+            "n": len(group),
+            "success_rate_pct": round(100 * statistics.mean(1.0 if r["success"] else 0.0 for r in group), 3),
+            "median_position_error_mm": round(statistics.median(r["position_error_mm"] for r in group), 6),
+        }
+
     return {
         "benchmark_type": "software-only internal simulator validation",
         "clinical_accuracy_claim": False,
         "seed": seed,
         "trials": len(rows),
         "software_success_rate_pct": round(100 * statistics.mean(successes), 3),
+        "failure_reason_counts": reason_counts,
+        "by_view": by_view,
         "position_error_mm": {
             "median": round(statistics.median(errors), 6),
             "mean": round(statistics.mean(errors), 6),
             "p95": round(percentile(errors, 0.95), 6),
+            "p99": round(percentile(errors, 0.99), 6),
             "max": round(max(errors), 6),
         },
         "angular_error_deg": {
