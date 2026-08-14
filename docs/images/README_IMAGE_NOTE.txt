@@ -1,0 +1,1 @@
+Hero image is stored separately as a binary asset. If the image does not render on GitHub, verify docs/images/simulator-hero.png exists on main and that README references that exact path.
