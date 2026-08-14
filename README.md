@@ -23,6 +23,12 @@
   <img alt="Render" src="https://img.shields.io/badge/Backend-Render-46E3B7?logo=render&logoColor=black">
 </p>
 
+<p align="center">
+  <img src="docs/images/simulator-hero.jpg" alt="AI-guided C-arm simulator showing landmark registration, verified geometry, confidence output, and simulated X-ray exposure" width="100%">
+</p>
+
+<p align="center"><em>Live cervical-spine AP workflow: registered landmarks, planned C-arm pose, 97.9% planner confidence, scene-geometry verification, and simulated X-ray exposure.</em></p>
+
 ---
 
 ## Overview
@@ -185,6 +191,10 @@ C-arm-guidance-simulator/
 │       ├── synthetic_xray.py       # Reference-radiograph resolver + API
 │       ├── reference_xrays/        # Projection-specific reference images
 │       └── planner/                # Pose solving, path planning, confidence
+│
+├── docs/
+│   ├── ARCHITECTURE.md             # Technical architecture notes
+│   └── images/                     # README / documentation screenshots
 │
 ├── AI/                             # AI/inference-related development
 ├── src/                            # Training and evaluation code
@@ -368,4 +378,4 @@ Third-party assets, libraries, datasets, and prior work remain subject to their 
 
 ## License
 
-See [`LICENSE`](LICENSE) for repository licensing information. Third-party datasets, medical images, models, and assets may have separate licenses that are not granted by the repository license.
+Repository software is distributed under the MIT License. Copyright notices for original contributors are preserved in [`LICENSE`](LICENSE). Third-party datasets, medical images, models, and assets may have separate licenses that are not granted by the repository license.
