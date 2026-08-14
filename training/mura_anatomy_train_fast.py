@@ -83,13 +83,16 @@ def run_epoch(model, loader, loss_fn, device, opt=None, scaler=None, desc=""):
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--data-root",type=Path,required=True)
-    ap.add_argument("--epochs",type=int,default=8,help="Total target epoch number, not additional epochs")
+    ap.add_argument("--epochs",type=int,default=60,help="Maximum total epoch number, not additional epochs")
     ap.add_argument("--batch-size",type=int,default=64)
     ap.add_argument("--workers",type=int,default=8)
     ap.add_argument("--image-size",type=int,default=224)
     ap.add_argument("--lr",type=float,default=3e-4)
     ap.add_argument("--output",type=Path,default=Path("results/mura_anatomy_fast"))
-    ap.add_argument("--resume",type=Path,default=None,help="Checkpoint to resume from, e.g. results/mura_anatomy_fast/last_checkpoint.pt")
+    ap.add_argument("--resume",type=Path,default=None,help="Checkpoint to resume from")
+    ap.add_argument("--lr-patience",type=int,default=3,help="Plateau epochs before halving learning rate")
+    ap.add_argument("--early-stop-patience",type=int,default=10,help="Stop after this many epochs without a new best balanced accuracy; 0 disables")
+    ap.add_argument("--min-lr",type=float,default=1e-6)
     args=ap.parse_args()
 
     torch.backends.cudnn.benchmark=True
@@ -110,6 +113,7 @@ def main():
     model=models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
     model.fc=nn.Linear(model.fc.in_features,len(CLASSES)); model=model.to(device,memory_format=torch.channels_last)
     opt=torch.optim.AdamW(model.parameters(),lr=args.lr,weight_decay=1e-4)
+    scheduler=torch.optim.lr_scheduler.ReduceLROnPlateau(opt,mode="max",factor=0.5,patience=args.lr_patience,min_lr=args.min_lr)
     loss_fn=nn.CrossEntropyLoss(); scaler=torch.amp.GradScaler("cuda")
     args.output.mkdir(parents=True,exist_ok=True)
 
@@ -120,42 +124,72 @@ def main():
     best_metrics_path=args.output/"best_metrics.json"
 
     if history_path.exists():
-        try:
-            history=json.loads(history_path.read_text(encoding="utf-8"))
-        except Exception:
-            history=[]
+        try: history=json.loads(history_path.read_text(encoding="utf-8"))
+        except Exception: history=[]
 
     if best_metrics_path.exists():
         try:
             prior_best=json.loads(best_metrics_path.read_text(encoding="utf-8"))
             best=float(prior_best["valid"]["balanced_accuracy"])
-        except Exception:
-            best=-1.0
+        except Exception: best=-1.0
 
     if args.resume is not None:
         ck=torch.load(args.resume,map_location=device)
         model.load_state_dict(ck["model"])
         opt.load_state_dict(ck["optimizer"])
+        if "scheduler" in ck:
+            scheduler.load_state_dict(ck["scheduler"])
         start_epoch=int(ck["epoch"])+1
         print(f"Resumed from epoch {ck['epoch']} -> starting epoch {start_epoch}")
         if start_epoch>args.epochs:
             print(f"Checkpoint already reached epoch {ck['epoch']}; target --epochs={args.epochs}. Nothing to do.")
             return
 
+    # Reconstruct consecutive no-improvement count from saved history.
+    best_epoch=0
+    if history:
+        best_hist=max(history,key=lambda h:float(h.get("valid",{}).get("balanced_accuracy",-1)))
+        best_epoch=int(best_hist.get("epoch",0))
+        best=max(best,float(best_hist.get("valid",{}).get("balanced_accuracy",-1)))
+    bad_epochs=max(0,start_epoch-1-best_epoch) if best_epoch else 0
+
+    print(f"Best balanced accuracy entering run: {best:.4f} (epoch {best_epoch or 'unknown'})")
+    print(f"LR={opt.param_groups[0]['lr']:.2e} | LR plateau patience={args.lr_patience} | early-stop patience={args.early_stop_patience}")
+
     for e in range(start_epoch,args.epochs+1):
         t=time.time(); tm=run_epoch(model,trl,loss_fn,device,opt,scaler,f"train {e}/{args.epochs}")
         with torch.no_grad(): vm=run_epoch(model,val,loss_fn,device,None,None,f"valid {e}/{args.epochs}")
-        rec={"epoch":e,"seconds":round(time.time()-t,2),"train":tm,"valid":vm}
+
+        prev_lr=opt.param_groups[0]["lr"]
+        scheduler.step(vm["balanced_accuracy"])
+        new_lr=opt.param_groups[0]["lr"]
+
+        rec={"epoch":e,"seconds":round(time.time()-t,2),"lr":new_lr,"train":tm,"valid":vm}
         history=[h for h in history if int(h.get("epoch",-1))!=e]
         history.append(rec); history.sort(key=lambda x:int(x.get("epoch",0)))
         history_path.write_text(json.dumps(history,indent=2),encoding="utf-8")
-        ck={"epoch":e,"classes":CLASSES,"model":model.state_dict(),"optimizer":opt.state_dict(),"metrics":vm}
+
+        improved=vm["balanced_accuracy"]>best
+        if improved:
+            best=vm["balanced_accuracy"]; best_epoch=e; bad_epochs=0
+        else:
+            bad_epochs+=1
+
+        ck={"epoch":e,"classes":CLASSES,"model":model.state_dict(),"optimizer":opt.state_dict(),"scheduler":scheduler.state_dict(),"metrics":vm,"best_balanced_accuracy":best,"best_epoch":best_epoch,"bad_epochs":bad_epochs}
         torch.save(ck,args.output/"last_checkpoint.pt")
-        if vm["balanced_accuracy"]>best:
-            best=vm["balanced_accuracy"]
+        if improved:
             torch.save(ck,args.output/"best_checkpoint.pt")
             best_metrics_path.write_text(json.dumps(rec,indent=2),encoding="utf-8")
-        print(f"Epoch {e}/{args.epochs}: train_acc={tm['accuracy']:.4f} valid_acc={vm['accuracy']:.4f} balanced={vm['balanced_accuracy']:.4f} time={rec['seconds']}s")
-    print("Best balanced accuracy:",round(best,4))
+
+        lr_note=f" lr={new_lr:.2e}"
+        if new_lr < prev_lr: lr_note += " (reduced)"
+        print(f"Epoch {e}/{args.epochs}: train_acc={tm['accuracy']:.4f} valid_acc={vm['accuracy']:.4f} balanced={vm['balanced_accuracy']:.4f}{lr_note} best={best:.4f}@{best_epoch} no_improve={bad_epochs} time={rec['seconds']}s")
+
+        if args.early_stop_patience>0 and bad_epochs>=args.early_stop_patience:
+            print(f"Early stopping: no new best balanced accuracy for {bad_epochs} epochs.")
+            break
+
+    print(f"Best balanced accuracy: {best:.4f} at epoch {best_epoch}")
+    print(f"Best checkpoint: {(args.output/'best_checkpoint.pt').resolve()}")
 
 if __name__=="__main__": main()
