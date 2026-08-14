@@ -7,13 +7,13 @@
 <p align="center">
   <a href="https://c-armsim.com"><strong>Live Simulator</strong></a>
   ·
-  <a href="#system-architecture">Architecture</a>
+  <a href="docs/Home.md"><strong>Documentation</strong></a>
   ·
-  <a href="docs/Home.md">Documentation</a>
+  <a href="docs/ARCHITECTURE.md">Architecture</a>
   ·
-  <a href="#running-locally">Run Locally</a>
+  <a href="docs/GETTING_STARTED.md">Getting Started</a>
   ·
-  <a href="#research-status-and-limitations">Research Status</a>
+  <a href="docs/RESEARCH_LIMITATIONS.md">Research Status</a>
 </p>
 
 <p align="center">
@@ -23,12 +23,10 @@
   <img alt="Python" src="https://img.shields.io/badge/Backend-Python-3776AB?logo=python&logoColor=white">
   <img alt="Vercel" src="https://img.shields.io/badge/Frontend-Vercel-black?logo=vercel&logoColor=white">
   <img alt="Render" src="https://img.shields.io/badge/Backend-Render-46E3B7?logo=render&logoColor=black">
-  <img alt="MIT License" src="https://img.shields.io/badge/License-MIT-green.svg">
+  <img alt="MIT License" src="https://img.shields.io/badge/License-MIT-yellow.svg">
 </p>
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/SuhaimAlYafei/C-arm-guidance-simulator/main/docs/images/simulator-hero.jpg" alt="AI-guided C-arm simulator showing landmark registration, verified geometry, confidence output, and simulated X-ray exposure" width="100%">
-</p>
+[![AI-guided C-arm simulator showing landmark registration, verified geometry, confidence output, and simulated X-ray exposure](./docs/images/simulator-hero.jpg)](https://c-armsim.com)
 
 <p align="center"><em>Live cervical-spine AP workflow: registered landmarks, planned C-arm pose, 97.9% planner confidence, scene-geometry verification, and simulated X-ray exposure.</em></p>
 
@@ -38,17 +36,13 @@
 
 This repository contains a research simulator for **AI-guided and geometry-aware C-arm positioning**. The system combines an interactive 3D digital twin, anatomical landmark targeting, automated pose solving, waypoint-based motion planning, geometry verification, and projection-specific simulated radiographic output.
 
-The simulator is designed to explore a practical question in fluoroscopy-guided procedures: **can a C-arm be guided back to a desired anatomical view in a reproducible and explainable way, while reducing unnecessary manual repositioning?**
+The simulator explores a practical question in fluoroscopy-guided procedures: **can a C-arm be guided back to a desired anatomical view in a reproducible and explainable way while reducing unnecessary manual repositioning?**
 
 > **Research use only.** This project is not a medical device, is not clinically validated, and must not be used for diagnosis, treatment, or patient care.
 
 ### Live demo
 
 **https://c-armsim.com**
-
-### Documentation
-
-Start at **[`docs/Home.md`](docs/Home.md)** for the documentation hub, setup guide, simulator workflow, API reference, architecture, and research limitations.
 
 ---
 
@@ -62,7 +56,7 @@ Start at **[`docs/Home.md`](docs/Home.md)** for the documentation hub, setup gui
 - Central-ray and isocenter geometry checks before exposure
 - Backend confidence reporting and planning explanations
 - Projection-specific reference-radiograph library for deterministic demo output
-- Separate lightweight synthetic X-ray service for fast deployment and isolation from the heavier planning stack
+- Separate lightweight imaging service for fast deployment
 - FastAPI planning and imaging services
 - Dataset, model-training, evaluation, and analysis utilities
 - Hardware-prototype and hardware-in-the-loop development assets
@@ -102,7 +96,7 @@ EXPOSE X-RAY
 Projection-specific simulated radiographic view
 ```
 
-The current frontend uses the selected anatomical landmark and projection to request the corresponding radiographic output after the C-arm reaches the planned pose.
+For the detailed workflow, see [`docs/SIMULATOR_WORKFLOW.md`](docs/SIMULATOR_WORKFLOW.md).
 
 ---
 
@@ -135,21 +129,17 @@ The current frontend uses the selected anatomical landmark and projection to req
 └─────────────────────────────┘      └───────────────────────────────────────┘
 ```
 
-The imaging service is intentionally separated from the heavier planner/DRR environment. This keeps exposure requests responsive and prevents the lightweight X-ray workflow from loading the full PyTorch/CUDA/VTK/DiffDRR dependency stack during startup.
-
 For a deeper technical view, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ---
 
 ## Anatomy and Projection Library
 
-The simulator uses named anatomical targets and projection-specific reference images stored under:
+Projection-specific reference images are stored under:
 
 ```text
 python/bridge/reference_xrays/
 ```
-
-Current coverage includes major regions such as:
 
 | Region | Examples | Views |
 |---|---|---|
@@ -158,9 +148,9 @@ Current coverage includes major regions such as:
 | Upper extremity | Shoulders, elbows, hands | AP, lateral, selected oblique |
 | Lower extremity | Hips, knees, ankles | AP, lateral |
 
-Reference selection is performed by the lightweight synthetic X-ray API using normalized anatomy, laterality, and projection names.
+Reference selection is performed by the lightweight imaging API using normalized anatomy, laterality, and projection names.
 
-**Important:** reference radiographs are demonstration assets, not a validated clinical dataset. Any externally sourced image must be used only where its license or permission allows redistribution.
+**Important:** reference radiographs are demonstration assets, not a validated clinical dataset. Externally sourced images remain subject to their original licensing and redistribution terms.
 
 ---
 
@@ -168,7 +158,7 @@ Reference selection is performed by the lightweight synthetic X-ray API using no
 
 The planner supports a frontend-solved final pose that is checked against the live Three.js scene before the backend accepts it.
 
-The current simulator uses a **1 mm internal scene-geometry acceptance threshold** for isocenter and central-ray alignment. This value is a simulator engineering constraint only and **must not be interpreted as demonstrated clinical positioning accuracy**.
+The current simulator uses a **1 mm internal scene-geometry acceptance threshold** for isocenter and central-ray alignment. This is an engineering constraint inside the simulator and **must not be interpreted as demonstrated clinical positioning accuracy**.
 
 The backend can return:
 
@@ -187,10 +177,6 @@ The backend can return:
 C-arm-guidance-simulator/
 ├── 3DVisualizer/
 │   └── ciartic-app/               # React + Three.js simulator frontend
-│       ├── public/                 # 3D and static assets
-│       ├── src/                    # UI, scene, geometry and control logic
-│       └── scripts/                # Maintenance / patch scripts
-│
 ├── python/
 │   └── bridge/
 │       ├── api.py                  # Main planning / rendering FastAPI app
@@ -198,16 +184,14 @@ C-arm-guidance-simulator/
 │       ├── synthetic_xray.py       # Reference-radiograph resolver + API
 │       ├── reference_xrays/        # Projection-specific reference images
 │       └── planner/                # Pose solving, path planning, confidence
-│
 ├── docs/
 │   ├── Home.md                     # Documentation hub
-│   ├── ARCHITECTURE.md             # Technical architecture notes
+│   ├── ARCHITECTURE.md             # Technical architecture
 │   ├── GETTING_STARTED.md          # Local setup
 │   ├── SIMULATOR_WORKFLOW.md       # End-to-end simulator workflow
 │   ├── API.md                      # API reference
-│   ├── RESEARCH_LIMITATIONS.md     # Scope, validation status, limitations
+│   ├── RESEARCH_LIMITATIONS.md     # Evidence boundaries and limitations
 │   └── images/                     # README / documentation screenshots
-│
 ├── AI/                             # AI/inference-related development
 ├── src/                            # Training and evaluation code
 ├── assets/                         # Shared models/resources
@@ -222,37 +206,10 @@ C-arm-guidance-simulator/
 
 ## Technology Stack
 
-### Frontend
-
-- React
-- Three.js
-- Vite
-- JavaScript
-
-### Backend
-
-- Python
-- FastAPI
-- Uvicorn
-- NumPy / scientific Python utilities
-
-### Research / imaging stack
-
-The repository also contains development paths involving:
-
-- PyTorch
-- DiffDRR
-- VTK / PyVista
-- medical-image processing utilities
-- geometry and registration tooling
-
-These heavier dependencies are kept separate from the lightweight X-ray service where possible.
-
-### Deployment
-
-- **Vercel**: web frontend
-- **Render**: planning backend
-- **Render**: lightweight synthetic X-ray backend
+**Frontend:** React, Three.js, Vite, JavaScript  
+**Backend:** Python, FastAPI, Uvicorn, NumPy / scientific Python utilities  
+**Research / imaging:** PyTorch, DiffDRR, VTK / PyVista, medical-image processing and geometry tooling  
+**Deployment:** Vercel frontend + Render planning and imaging services
 
 ---
 
@@ -262,52 +219,32 @@ These heavier dependencies are kept separate from the lightweight X-ray service 
 
 ```http
 POST /plan
-```
-
-Computes the planned C-arm path from the current pose to the requested final pose and returns waypoints, confidence information, solver metadata, and optional geometry-verification information.
-
-```http
 GET /health
 ```
-
-Reports backend and registered-dataset status.
 
 ### Lightweight imaging service
 
 ```http
 POST /synthetic-xray
-```
-
-Accepts anatomy, view, laterality, and optional angulation information and returns a base64-encoded simulated radiographic image.
-
-```http
 GET /synthetic-xray/health
 ```
 
-Reports imaging-service configuration and reference-library status.
+See [`docs/API.md`](docs/API.md) for the API documentation.
 
 ---
 
 ## Running Locally
 
-### 1. Clone
+### Frontend
 
 ```bash
 git clone https://github.com/SuhaimAlYafei/C-arm-guidance-simulator.git
-cd C-arm-guidance-simulator
-```
-
-### 2. Frontend
-
-```bash
-cd 3DVisualizer/ciartic-app
+cd C-arm-guidance-simulator/3DVisualizer/ciartic-app
 npm install
 npm run dev
 ```
 
-### 3. Main backend
-
-From the repository root:
+### Main backend
 
 ```bash
 pip install -r python/requirements.txt
@@ -315,11 +252,7 @@ cd python
 uvicorn bridge.api:app --host 0.0.0.0 --port 8000
 ```
 
-> The main backend contains a heavier research stack and may require additional local datasets/environment configuration depending on the feature being used.
-
-### 4. Lightweight imaging backend
-
-From the repository root:
+### Lightweight imaging backend
 
 ```bash
 pip install -r python/requirements-synthetic.txt
@@ -327,7 +260,7 @@ cd python
 uvicorn bridge.synthetic_server:app --host 0.0.0.0 --port 8001
 ```
 
-The lightweight service is the recommended path when only the projection/reference-image API is needed.
+For expanded setup notes, see [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md).
 
 ---
 
@@ -355,28 +288,19 @@ The lightweight service is the recommended path when only the projection/referen
 
 No claim of clinical accuracy, radiation reduction, diagnostic performance, or autonomous medical-device capability should be inferred from the current simulator.
 
----
-
-## Design Principles
-
-1. **Deterministic anatomy before generative appearance.** When a projection-specific reference is available, the simulator prioritizes anatomically appropriate deterministic output over unconstrained image generation.
-2. **Geometry must be inspectable.** Target alignment, final pose, central ray, and path planning should be visible and explainable rather than hidden inside a black box.
-3. **Research claims must match evidence.** Simulator tolerances and software outputs are reported as engineering properties, not clinical performance claims.
-4. **Modular deployment.** Planning and imaging services are separated so changes to one subsystem do not unnecessarily destabilize the other.
+See [`docs/RESEARCH_LIMITATIONS.md`](docs/RESEARCH_LIMITATIONS.md) for the full evidence and limitations statement.
 
 ---
 
-## Development Notes
+## Documentation
 
-The project has evolved through multiple research prototypes. Some folders contain experimental scripts, archived outputs, and development utilities alongside the current web application. The deployed simulator primarily depends on the frontend under `3DVisualizer/ciartic-app` and the Python bridge services under `python/bridge`.
+Start at **[`docs/Home.md`](docs/Home.md)**.
 
-Before restructuring or deleting historical files, verify that they are not referenced by training, evaluation, deployment, or prototype workflows.
-
----
-
-## Contributing
-
-Research contributions, bug reports, reproducibility improvements, and documentation corrections are welcome. For changes involving medical images, do not commit patient-identifiable information, and confirm that the image may legally be redistributed.
+- [Getting Started](docs/GETTING_STARTED.md)
+- [Simulator Workflow](docs/SIMULATOR_WORKFLOW.md)
+- [System Architecture](docs/ARCHITECTURE.md)
+- [API Reference](docs/API.md)
+- [Research Status & Limitations](docs/RESEARCH_LIMITATIONS.md)
 
 ---
 
