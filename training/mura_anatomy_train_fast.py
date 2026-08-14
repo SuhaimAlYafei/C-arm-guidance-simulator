@@ -83,12 +83,13 @@ def run_epoch(model, loader, loss_fn, device, opt=None, scaler=None, desc=""):
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--data-root",type=Path,required=True)
-    ap.add_argument("--epochs",type=int,default=8)
+    ap.add_argument("--epochs",type=int,default=8,help="Total target epoch number, not additional epochs")
     ap.add_argument("--batch-size",type=int,default=64)
     ap.add_argument("--workers",type=int,default=8)
     ap.add_argument("--image-size",type=int,default=224)
     ap.add_argument("--lr",type=float,default=3e-4)
     ap.add_argument("--output",type=Path,default=Path("results/mura_anatomy_fast"))
+    ap.add_argument("--resume",type=Path,default=None,help="Checkpoint to resume from, e.g. results/mura_anatomy_fast/last_checkpoint.pt")
     args=ap.parse_args()
 
     torch.backends.cudnn.benchmark=True
@@ -111,16 +112,49 @@ def main():
     opt=torch.optim.AdamW(model.parameters(),lr=args.lr,weight_decay=1e-4)
     loss_fn=nn.CrossEntropyLoss(); scaler=torch.amp.GradScaler("cuda")
     args.output.mkdir(parents=True,exist_ok=True)
-    best=-1; history=[]
-    for e in range(1,args.epochs+1):
+
+    best=-1.0
+    history=[]
+    start_epoch=1
+    history_path=args.output/"history.json"
+    best_metrics_path=args.output/"best_metrics.json"
+
+    if history_path.exists():
+        try:
+            history=json.loads(history_path.read_text(encoding="utf-8"))
+        except Exception:
+            history=[]
+
+    if best_metrics_path.exists():
+        try:
+            prior_best=json.loads(best_metrics_path.read_text(encoding="utf-8"))
+            best=float(prior_best["valid"]["balanced_accuracy"])
+        except Exception:
+            best=-1.0
+
+    if args.resume is not None:
+        ck=torch.load(args.resume,map_location=device)
+        model.load_state_dict(ck["model"])
+        opt.load_state_dict(ck["optimizer"])
+        start_epoch=int(ck["epoch"])+1
+        print(f"Resumed from epoch {ck['epoch']} -> starting epoch {start_epoch}")
+        if start_epoch>args.epochs:
+            print(f"Checkpoint already reached epoch {ck['epoch']}; target --epochs={args.epochs}. Nothing to do.")
+            return
+
+    for e in range(start_epoch,args.epochs+1):
         t=time.time(); tm=run_epoch(model,trl,loss_fn,device,opt,scaler,f"train {e}/{args.epochs}")
         with torch.no_grad(): vm=run_epoch(model,val,loss_fn,device,None,None,f"valid {e}/{args.epochs}")
-        rec={"epoch":e,"seconds":round(time.time()-t,2),"train":tm,"valid":vm}; history.append(rec)
-        (args.output/"history.json").write_text(json.dumps(history,indent=2),encoding="utf-8")
+        rec={"epoch":e,"seconds":round(time.time()-t,2),"train":tm,"valid":vm}
+        history=[h for h in history if int(h.get("epoch",-1))!=e]
+        history.append(rec); history.sort(key=lambda x:int(x.get("epoch",0)))
+        history_path.write_text(json.dumps(history,indent=2),encoding="utf-8")
         ck={"epoch":e,"classes":CLASSES,"model":model.state_dict(),"optimizer":opt.state_dict(),"metrics":vm}
         torch.save(ck,args.output/"last_checkpoint.pt")
         if vm["balanced_accuracy"]>best:
-            best=vm["balanced_accuracy"]; torch.save(ck,args.output/"best_checkpoint.pt"); (args.output/"best_metrics.json").write_text(json.dumps(rec,indent=2),encoding="utf-8")
+            best=vm["balanced_accuracy"]
+            torch.save(ck,args.output/"best_checkpoint.pt")
+            best_metrics_path.write_text(json.dumps(rec,indent=2),encoding="utf-8")
         print(f"Epoch {e}/{args.epochs}: train_acc={tm['accuracy']:.4f} valid_acc={vm['accuracy']:.4f} balanced={vm['balanced_accuracy']:.4f} time={rec['seconds']}s")
     print("Best balanced accuracy:",round(best,4))
 
