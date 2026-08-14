@@ -18,8 +18,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import math
-import os
 import random
 import time
 from collections import Counter
@@ -49,6 +47,19 @@ def parse_mura_path(file_name: str) -> dict[str, str] | None:
     parts = normalized.split("/")
     if len(parts) < 5 or parts[0] not in {"train", "valid"}:
         return None
+
+    # Some archive/export tools include macOS AppleDouble metadata sidecars such
+    # as ._image3.png. They are not radiographs even though they end in .png.
+    # Exclude them, __MACOSX entries, and non-image files before training.
+    filename = parts[-1]
+    if (
+        filename.startswith("._")
+        or Path(filename).suffix.lower() not in IMAGE_EXTENSIONS
+        or "__MACOSX" in parts
+        or any(part.startswith("._") for part in parts)
+    ):
+        return None
+
     anatomy_token = parts[1]
     if not anatomy_token.startswith("XR_"):
         return None
