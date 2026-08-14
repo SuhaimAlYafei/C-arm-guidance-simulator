@@ -6,12 +6,12 @@ simulator, NOT diagnosis and NOT clinical validation.
 
 Example (Windows PowerShell):
     py training/mura_anatomy_train.py `
-      --data-root "C:\Users\suhai\Downloads\MURA" `
+      --data-root C:/Users/suhai/Downloads/MURA `
       --epochs 8 --batch-size 32
 
 Run a dataset preflight first:
     py training/mura_anatomy_train.py `
-      --data-root "C:\Users\suhai\Downloads\MURA" --check-only
+      --data-root C:/Users/suhai/Downloads/MURA --check-only
 """
 from __future__ import annotations
 
@@ -87,7 +87,6 @@ def locate_image_root(data_root: Path, rows: list[dict[str, str]]) -> Path:
         if probe and (base / Path(probe)).is_file():
             return base
 
-    # Redivis exports are sometimes wrapped by one extra extracted directory.
     images_dir = data_root / "images"
     if images_dir.exists():
         for child in images_dir.iterdir():
@@ -152,8 +151,6 @@ class MuraAnatomyDataset(Dataset):
 
 
 def build_transforms(image_size: int):
-    # No horizontal flip: laterality can be clinically meaningful even though
-    # this first model predicts anatomy rather than side.
     train_tf = transforms.Compose([
         transforms.Resize((image_size, image_size)),
         transforms.RandomRotation(degrees=5),
