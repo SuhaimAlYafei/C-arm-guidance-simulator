@@ -1,0 +1,1 @@
+Temporary placeholder while binary hero image is being refreshed.
