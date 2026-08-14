@@ -9,6 +9,8 @@
   ·
   <a href="#system-architecture">Architecture</a>
   ·
+  <a href="docs/Home.md">Documentation</a>
+  ·
   <a href="#running-locally">Run Locally</a>
   ·
   <a href="#research-status-and-limitations">Research Status</a>
@@ -21,10 +23,11 @@
   <img alt="Python" src="https://img.shields.io/badge/Backend-Python-3776AB?logo=python&logoColor=white">
   <img alt="Vercel" src="https://img.shields.io/badge/Frontend-Vercel-black?logo=vercel&logoColor=white">
   <img alt="Render" src="https://img.shields.io/badge/Backend-Render-46E3B7?logo=render&logoColor=black">
+  <img alt="MIT License" src="https://img.shields.io/badge/License-MIT-green.svg">
 </p>
 
 <p align="center">
-  <img src="docs/images/simulator-hero.jpg" alt="AI-guided C-arm simulator showing landmark registration, verified geometry, confidence output, and simulated X-ray exposure" width="100%">
+  <img src="https://raw.githubusercontent.com/SuhaimAlYafei/C-arm-guidance-simulator/main/docs/images/simulator-hero.jpg" alt="AI-guided C-arm simulator showing landmark registration, verified geometry, confidence output, and simulated X-ray exposure" width="100%">
 </p>
 
 <p align="center"><em>Live cervical-spine AP workflow: registered landmarks, planned C-arm pose, 97.9% planner confidence, scene-geometry verification, and simulated X-ray exposure.</em></p>
@@ -42,6 +45,10 @@ The simulator is designed to explore a practical question in fluoroscopy-guided 
 ### Live demo
 
 **https://c-armsim.com**
+
+### Documentation
+
+Start at **[`docs/Home.md`](docs/Home.md)** for the documentation hub, setup guide, simulator workflow, API reference, architecture, and research limitations.
 
 ---
 
@@ -193,7 +200,12 @@ C-arm-guidance-simulator/
 │       └── planner/                # Pose solving, path planning, confidence
 │
 ├── docs/
+│   ├── Home.md                     # Documentation hub
 │   ├── ARCHITECTURE.md             # Technical architecture notes
+│   ├── GETTING_STARTED.md          # Local setup
+│   ├── SIMULATOR_WORKFLOW.md       # End-to-end simulator workflow
+│   ├── API.md                      # API reference
+│   ├── RESEARCH_LIMITATIONS.md     # Scope, validation status, limitations
 │   └── images/                     # README / documentation screenshots
 │
 ├── AI/                             # AI/inference-related development
