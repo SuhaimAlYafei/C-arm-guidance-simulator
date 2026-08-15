@@ -46,6 +46,23 @@ class DS(Dataset):
         return x,C2I[a],rel
 
 
+def build_model(ck):
+    arch=str(ck.get("architecture","resnet18")).lower()
+    if arch=="convnext_tiny":
+        model=models.convnext_tiny(weights=None)
+        model.classifier[2]=nn.Linear(model.classifier[2].in_features,len(CLASSES))
+    elif arch=="resnet50":
+        model=models.resnet50(weights=None)
+        model.fc=nn.Linear(model.fc.in_features,len(CLASSES))
+    elif arch=="resnet18":
+        model=models.resnet18(weights=None)
+        model.fc=nn.Linear(model.fc.in_features,len(CLASSES))
+    else:
+        raise ValueError(f"Unsupported checkpoint architecture: {arch}")
+    model.load_state_dict(ck["model"])
+    return model,arch
+
+
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--data-root",type=Path,required=True)
@@ -55,17 +72,21 @@ def main():
     ap.add_argument("--output",type=Path,default=Path("results/mura_anatomy_evaluation"))
     args=ap.parse_args()
 
-    rows=parse_rows(args.data_root/"mura_v1_1.csv"); root=find_root(args.data_root,rows[0][0])
-    tf=transforms.Compose([transforms.Resize((224,224)),transforms.ToTensor(),transforms.Normalize([.485,.456,.406],[.229,.224,.225])])
-    loader=DataLoader(DS(rows,root,tf),batch_size=args.batch_size,shuffle=False,num_workers=args.workers,pin_memory=True,persistent_workers=args.workers>0)
     device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
     ck=torch.load(args.checkpoint,map_location=device)
-    model=models.resnet18(weights=None); model.fc=nn.Linear(model.fc.in_features,len(CLASSES)); model.load_state_dict(ck["model"]); model=model.to(device); model.eval()
+    model,arch=build_model(ck)
+    image_size=int(ck.get("image_size",224))
+
+    rows=parse_rows(args.data_root/"mura_v1_1.csv"); root=find_root(args.data_root,rows[0][0])
+    tf=transforms.Compose([transforms.Resize((image_size,image_size)),transforms.ToTensor(),transforms.Normalize([.485,.456,.406],[.229,.224,.225])])
+    loader=DataLoader(DS(rows,root,tf),batch_size=args.batch_size,shuffle=False,num_workers=args.workers,pin_memory=True,persistent_workers=args.workers>0)
+    model=model.to(device,memory_format=torch.channels_last); model.eval()
+    print(f"Checkpoint epoch={ck.get('epoch')} architecture={arch} image_size={image_size} device={device}")
 
     n=len(CLASSES); cm=[[0]*n for _ in range(n)]; records=[]; correct=0; total=0; conf_sum=0.; correct_conf=0.; incorrect_conf=0.; nc=0; ni=0
     with torch.no_grad():
         for x,y,paths in tqdm(loader,desc="evaluate",dynamic_ncols=True):
-            x=x.to(device,non_blocking=True); y=y.to(device,non_blocking=True)
+            x=x.to(device,non_blocking=True,memory_format=torch.channels_last); y=y.to(device,non_blocking=True)
             with torch.autocast(device_type="cuda",dtype=torch.float16,enabled=device.type=="cuda"): logits=model(x)
             probs=torch.softmax(logits.float(),dim=1); conf,pred=probs.max(1)
             for j in range(y.size(0)):
@@ -79,7 +100,7 @@ def main():
     for i,c in enumerate(CLASSES):
         tp=cm[i][i]; support=sum(cm[i]); predicted=sum(cm[r][i] for r in range(n)); rec=tp/support if support else 0.; prec=tp/predicted if predicted else 0.; f1=2*prec*rec/(prec+rec) if prec+rec else 0.
         recalls.append(rec); f1s.append(f1); per[c]={"support":support,"precision":round(prec,6),"recall":round(rec,6),"f1":round(f1,6)}
-    summary={"checkpoint_epoch":ck.get("epoch"),"validation_images":total,"accuracy":round(correct/total,6),"balanced_accuracy":round(sum(recalls)/n,6),"macro_f1":round(sum(f1s)/n,6),"mean_confidence":round(conf_sum/total,6),"mean_confidence_correct":round(correct_conf/nc,6) if nc else None,"mean_confidence_incorrect":round(incorrect_conf/ni,6) if ni else None,"per_class":per,"confusion_matrix":{"labels":CLASSES,"matrix":cm},"note":"MURA patient-separated validation evaluation; anatomy classification only. This is not clinical validation of C-arm positioning."}
+    summary={"checkpoint_epoch":ck.get("epoch"),"architecture":arch,"image_size":image_size,"validation_images":total,"accuracy":round(correct/total,6),"balanced_accuracy":round(sum(recalls)/n,6),"macro_f1":round(sum(f1s)/n,6),"mean_confidence":round(conf_sum/total,6),"mean_confidence_correct":round(correct_conf/nc,6) if nc else None,"mean_confidence_incorrect":round(incorrect_conf/ni,6) if ni else None,"per_class":per,"confusion_matrix":{"labels":CLASSES,"matrix":cm},"note":"MURA patient-separated validation evaluation; anatomy classification only. This is not clinical validation of C-arm positioning."}
     args.output.mkdir(parents=True,exist_ok=True)
     (args.output/"summary.json").write_text(json.dumps(summary,indent=2),encoding="utf-8")
     with (args.output/"predictions.csv").open("w",newline="",encoding="utf-8") as f:
