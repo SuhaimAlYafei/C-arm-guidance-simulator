@@ -82,6 +82,7 @@ def main():
     ap.add_argument("--seed",type=int,default=23112)
     ap.add_argument("--early-stop-patience",type=int,default=8)
     ap.add_argument("--output",type=Path,default=Path("results/mura_convnext_tiny_384"))
+    ap.add_argument("--resume",type=Path,default=None,help="Resume from a saved checkpoint")
     args=ap.parse_args()
 
     random.seed(args.seed); torch.manual_seed(args.seed); torch.cuda.manual_seed_all(args.seed)
@@ -123,20 +124,39 @@ def main():
     scaler=torch.amp.GradScaler("cuda")
 
     args.output.mkdir(parents=True,exist_ok=True)
-    history=[]; best=-1.; bad=0; best_epoch=0
-    for e in range(1,args.epochs+1):
+    history=[]; best=-1.; bad=0; best_epoch=0; start_epoch=1
+    history_path=args.output/"history.json"
+    best_metrics_path=args.output/"best_metrics.json"
+    if history_path.exists():
+        try: history=json.loads(history_path.read_text(encoding="utf-8"))
+        except Exception: history=[]
+    if history:
+        best_hist=max(history,key=lambda h:float(h.get("valid",{}).get("balanced_accuracy",-1)))
+        best=float(best_hist["valid"]["balanced_accuracy"]); best_epoch=int(best_hist["epoch"])
+    if args.resume is not None:
+        ck=torch.load(args.resume,map_location=device)
+        model.load_state_dict(ck["model"])
+        if "optimizer" in ck: opt.load_state_dict(ck["optimizer"])
+        start_epoch=int(ck.get("epoch",0))+1
+        print(f"Resumed from epoch {start_epoch-1} -> starting epoch {start_epoch}")
+        if start_epoch>args.epochs:
+            print("Target epoch already reached."); return
+    bad=max(0,start_epoch-1-best_epoch) if best_epoch else 0
+
+    for e in range(start_epoch,args.epochs+1):
         t=time.time(); tm=run_epoch(model,train,loss_fn,device,opt,scaler,f"train {e}/{args.epochs}")
         with torch.no_grad(): vm=run_epoch(model,valid,loss_fn,device,None,None,f"valid {e}/{args.epochs}")
         sched.step(vm["balanced_accuracy"])
         improved=vm["balanced_accuracy"]>best; bad=0 if improved else bad+1
         if improved: best=vm["balanced_accuracy"]; best_epoch=e
         rec={"epoch":e,"seconds":round(time.time()-t,2),"lr":opt.param_groups[0]["lr"],"seed":args.seed,"train":tm,"valid":vm}
-        history.append(rec); (args.output/"history.json").write_text(json.dumps(history,indent=2),encoding="utf-8")
+        history=[h for h in history if int(h.get("epoch",-1))!=e]; history.append(rec); history.sort(key=lambda x:int(x.get("epoch",0)))
+        history_path.write_text(json.dumps(history,indent=2),encoding="utf-8")
         ck={"epoch":e,"classes":CLASSES,"model":model.state_dict(),"optimizer":opt.state_dict(),"metrics":vm,"architecture":"convnext_tiny","image_size":args.image_size,"seed":args.seed}
         torch.save(ck,args.output/"last_checkpoint.pt")
         if improved:
             torch.save(ck,args.output/"best_checkpoint.pt")
-            (args.output/"best_metrics.json").write_text(json.dumps(rec,indent=2),encoding="utf-8")
+            best_metrics_path.write_text(json.dumps(rec,indent=2),encoding="utf-8")
         print(f"Epoch {e}/{args.epochs}: train={tm['accuracy']:.4f} valid={vm['accuracy']:.4f} balanced={vm['balanced_accuracy']:.4f} macro_f1={vm['macro_f1']:.4f} lr={opt.param_groups[0]['lr']:.2e} best={best:.4f}@{best_epoch} no_improve={bad} time={rec['seconds']}s")
         if bad>=args.early_stop_patience:
             print(f"Early stopping after {bad} epochs without improvement."); break
