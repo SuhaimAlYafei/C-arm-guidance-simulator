@@ -43,6 +43,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+        "https://c-arm-guidance-simulator.web.app",
+        "https://c-arm-guidance-simulator.firebaseapp.com",
         "https://c-arm-guidance-simulator.vercel.app",
         "https://c-armsim.com",
     ],
