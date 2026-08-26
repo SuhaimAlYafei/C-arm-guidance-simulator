@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+title: "AI-Guided C-Arm Positioning Simulator V2"
+message: "If you use this simulator, please cite the software and also credit the foundational C-arm guidance research listed in the documentation."
+type: software
+authors:
+  - family-names: "AlYafei"
+    given-names: "Suhaim Saleh"
+repository-code: "https://github.com/SuhaimAlYafei/C-arm-guidance-simulator"
+url: "https://c-armsim.com"
+version: "2.0"
+date-released: 2026-08-26
+license: MIT
+keywords:
+  - c-arm
+  - fluoroscopy
+  - digital twin
+  - medical imaging
+  - path planning
+  - firebase
+  - gemini
+  - three.js
+abstract: >-
+  A research and educational digital-twin simulator for anatomy-aware C-arm
+  positioning, scene-geometry verification, waypoint planning, deterministic
+  reference radiography, and AI-assisted simulator guidance. This software is
+  not a medical device and is not clinically validated.
