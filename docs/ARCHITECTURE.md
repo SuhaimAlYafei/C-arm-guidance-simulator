@@ -1,10 +1,12 @@
 # System Architecture - V2
 
-This document describes the current deployed architecture of the AI-Guided C-Arm Positioning Simulator.
+This document describes the current deployed architecture of the **AI-Guided C-Arm Positioning Simulator V2**.
+
+**Canonical production site:** https://c-armsim.com
 
 ## 1. High-level runtime
 
-The current production simulator uses four primary runtime components:
+The production system uses four primary runtime components:
 
 1. **Firebase-hosted React + Three.js frontend**
 2. **Render-hosted FastAPI planning backend**
@@ -15,6 +17,9 @@ The current production simulator uses four primary runtime components:
 User
  |
  v
+https://c-armsim.com
+ |
+ v
 Firebase Hosting
  |
  v
@@ -22,7 +27,7 @@ React + Three.js frontend
  |
  +--> static patient / registration / reference-X-ray assets
  |
- +--> Firebase App Check
+ +--> Firebase App Check + reCAPTCHA Enterprise
  |
  +--> Firebase AI Logic --> Gemini Guidance
  |
@@ -39,7 +44,11 @@ React + Three.js frontend
 
 ## 2. Frontend responsibilities
 
-The frontend under `3DVisualizer/ciartic-app` owns the interactive simulator experience.
+The production V2 frontend lives under:
+
+```text
+3DVisualizer/ciartic-app
+```
 
 Responsibilities include:
 
@@ -59,7 +68,20 @@ Responsibilities include:
 - Gemini Guidance
 - Arduino / hardware integration hooks
 
-## 3. Default patient registration
+## 3. Application shell and Gemini integration
+
+The browser entry point mounts `SimulatorShell`, which renders both the core simulator and Gemini Guidance:
+
+```text
+src/main.jsx
+  -> SimulatorShell.jsx
+       -> App.jsx
+       -> GeminiAssistant.jsx
+```
+
+`SimulatorShell.jsx` exposes a compact simulator-state context to the assistant. The assistant is intended to interpret the simulated workflow and must not be treated as clinical decision support.
+
+## 4. Default patient registration
 
 Bundled registration:
 
@@ -73,9 +95,9 @@ Startup behavior:
 2. otherwise fetch the bundled default registration
 3. allow later save/import/export/recalibration
 
-The current baseline contains LM0-LM16.
+The baseline contains **LM0-LM16**.
 
-## 4. Patient visualization
+## 5. Patient visualization
 
 Patient model:
 
@@ -85,7 +107,7 @@ Patient model:
 
 The rendered GLB is a visual surface model. It must not be assumed to establish patient-specific anatomical registration accuracy by itself.
 
-## 5. Planning backend
+## 6. Planning backend
 
 Primary production endpoint:
 
@@ -93,7 +115,7 @@ Primary production endpoint:
 https://c-arm-guidance-simulator.onrender.com/plan
 ```
 
-Important endpoint:
+Primary API:
 
 ```http
 POST /plan
@@ -101,7 +123,7 @@ POST /plan
 
 The planning backend receives the current C-arm pose, target information, requested projection, waypoint count, and scene-derived final-pose / geometry metadata.
 
-The backend returns:
+It can return:
 
 - start pose
 - final pose
@@ -109,9 +131,9 @@ The backend returns:
 - planner confidence metadata
 - solver mode
 - explanation
-- optional geometry-verification payload
+- geometry-verification payload
 
-## 6. Geometry verification
+## 7. Geometry verification
 
 The frontend evaluates the live Three.js scene hierarchy and can verify:
 
@@ -123,7 +145,7 @@ The frontend evaluates the live Three.js scene hierarchy and can verify:
 
 The current **1 mm scene-geometry threshold** is an internal software-engineering acceptance limit. It is not evidence of 1 mm physical or clinical accuracy.
 
-## 7. Exposure architecture
+## 8. Exposure architecture
 
 Current V2 reference images are stored in:
 
@@ -131,13 +153,11 @@ Current V2 reference images are stored in:
 3DVisualizer/ciartic-app/public/reference_xrays/
 ```
 
-`REFERENCE_XRAY_MAP` in the frontend maps supported anatomy/projection combinations to those static files.
+`REFERENCE_XRAY_MAP` maps supported anatomy/projection combinations to those static files.
 
-If a mapping is unavailable, the simulator explicitly reports that no reference image is available instead of showing an unconstrained generated image.
+If a mapping is unavailable, the simulator explicitly reports that no reference image is available rather than showing an unconstrained generated image.
 
-This deterministic mapping is preferred for the current expert-facing simulator because unconstrained image generation may produce anatomically incorrect or projection-inconsistent output.
-
-## 8. Gemini Guidance
+## 9. Gemini Guidance
 
 Firebase initialization:
 
@@ -151,16 +171,34 @@ Assistant component:
 3DVisualizer/ciartic-app/src/components/GeminiAssistant.jsx
 ```
 
-Firebase provides:
+Application shell:
+
+```text
+3DVisualizer/ciartic-app/src/SimulatorShell.jsx
+```
+
+The Firebase integration provides:
 
 - App Check
 - reCAPTCHA Enterprise
 - Firebase AI Logic
 - Gemini model access
 
-The assistant receives structured simulator context and is intended to explain simulator state and workflow. It is not intended as medical advice or clinical decision support.
+Gemini Guidance receives simulator-state context and explains the current research simulation. It is not intended as medical advice, diagnostic interpretation, or clinical decision support.
 
-## 9. Deployment
+## 10. Google platform services
+
+Google technologies are used as infrastructure and AI dependencies:
+
+- Firebase Hosting
+- Firebase App Check
+- reCAPTCHA Enterprise
+- Firebase AI Logic
+- Gemini
+
+Their use does not imply sponsorship, endorsement, or clinical validation by Google.
+
+## 11. Deployment
 
 ### Frontend
 
@@ -170,25 +208,39 @@ Firebase project:
 c-arm-guidance-simulator
 ```
 
-Production Hosting URL:
+Canonical production domain:
+
+```text
+https://c-armsim.com
+```
+
+Firebase-provided fallback domain:
 
 ```text
 https://c-arm-guidance-simulator.web.app
 ```
 
-The custom domain `c-armsim.com` is being migrated to Firebase Hosting.
-
 ### Planning backend
 
 The main planning stack runs on Render and is called directly over HTTPS.
 
-## 10. Legacy / experimental imaging code
+## 12. Research lineage
 
-The repository also retains experimental imaging and DiffDRR-related infrastructure in the Python research stack, including the lightweight synthetic/reference imaging service.
+The broader research direction is informed by automated C-arm guidance work from **Ahmad Arrabi and collaborators**, including *Automated C-Arm Positioning via Conformal Landmark Localization* (ICCVW APAH 2025).
 
-Those components remain useful for research development but are not required for every supported V2 reference-image exposure, because the current frontend can resolve supported reference views directly from static Firebase-hosted assets.
+The official implementation of that work is:
 
-## 11. Current research boundary
+https://github.com/AhmadArrabi/C_arm_guidance_APAH
+
+See [`RESEARCH_FOUNDATION.md`](RESEARCH_FOUNDATION.md) for attribution and the distinction between prior research and V2 simulator engineering.
+
+## 13. Legacy / experimental imaging code
+
+The repository retains experimental imaging and DiffDRR-related infrastructure in the Python research stack, including the lightweight synthetic/reference imaging service.
+
+Those components remain useful for research development but are not required for every supported V2 reference-image exposure because the current frontend can resolve supported reference views directly from static Firebase-hosted assets.
+
+## 14. Current research boundary
 
 The architecture supports simulation and engineering evaluation. It does not establish:
 
