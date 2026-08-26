@@ -1,90 +1,62 @@
 # API Reference
 
-## Main planning service
+## Production planning service
 
-### `GET /health`
+Base service:
 
-Reports planner/backend status, registered CT availability, render dimensions, SID, and the configured maximum verified alignment error.
+```text
+https://c-arm-guidance-simulator.onrender.com
+```
 
 ### `POST /plan`
 
-Plans movement from the current C-arm pose to the requested target pose.
+Plans movement from the current simulated C-arm pose to a requested final pose.
 
-Key request fields include:
+Typical request information includes:
 
-- current pose
+- current C-arm pose
 - target coordinates
-- projection/view
+- requested projection/view
 - oblique angle
 - waypoint count
-- optional frontend-solved final-pose override
-- optional geometry-verification payload
+- optional frontend-solved final pose
+- optional scene-geometry verification payload
 
-The response includes:
+Typical response information includes:
 
 - start pose
 - final pose
 - waypoint sequence
-- confidence information
+- planner confidence
 - solver mode
 - explanation
 - optional geometry-verification metadata
 
-When a frontend-solved final pose is supplied, the backend requires geometry verification and rejects solutions outside the configured scene-geometry tolerance.
+The production V2 frontend calls this endpoint directly.
 
-## Lightweight imaging service
+### `GET /health`
 
-### `GET /synthetic-xray/health`
+Where enabled, reports planning-service health and configuration information.
 
-Reports the lightweight imaging-service configuration and reference-library status.
+## Reference X-rays in V2
 
-### `POST /synthetic-xray`
+The current V2 frontend does **not** require an HTTP imaging request for every supported reference exposure.
 
-Accepts a structured imaging request and returns a base64-encoded image.
-
-Typical request fields:
-
-```json
-{
-  "anatomy": "Neck (Cervical Spine)",
-  "view": "AP",
-  "laterality": null,
-  "angulation_deg": 0,
-  "angulation_direction": null
-}
-```
-
-Typical response fields:
-
-```json
-{
-  "image_base64": "...",
-  "mime_type": "image/png",
-  "source": "verified_reference_radiograph",
-  "model": "none",
-  "synthetic": false,
-  "anatomy": "Neck (Cervical Spine)",
-  "view": "AP",
-  "reference_used": true
-}
-```
-
-## Reference resolution
-
-The lightweight imaging backend normalizes anatomy, laterality, and projection names, then attempts to resolve a matching image in:
+Supported reference images are served as static Firebase Hosting assets from:
 
 ```text
-python/bridge/reference_xrays/
+3DVisualizer/ciartic-app/public/reference_xrays/
 ```
 
-Examples include:
+The frontend resolves supported anatomy/projection combinations through `REFERENCE_XRAY_MAP` in `App.jsx`.
 
-```text
-cervical_spine_ap.png
-chest_lateral.png
-left_shoulder_oblique.png
-right_knee_ap.png
-```
+Unsupported mappings produce an explicit no-reference-image state.
+
+## Legacy / experimental imaging API
+
+The repository retains experimental lightweight imaging infrastructure, including `/synthetic-xray`, for research and development.
+
+That API should not be confused with the static reference-image path used by the current V2 frontend for supported mappings.
 
 ## Research disclaimer
 
