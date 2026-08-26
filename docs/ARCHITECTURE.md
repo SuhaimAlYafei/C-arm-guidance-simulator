@@ -1,61 +1,96 @@
-# System Architecture
+# System Architecture - V2
 
 This document describes the current deployed architecture of the AI-Guided C-Arm Positioning Simulator.
 
-## 1. High-level system
+## 1. High-level runtime
 
-The simulator is split into three main runtime components:
+The current production simulator uses four primary runtime components:
 
-1. **Web frontend** — React + Three.js, deployed on Vercel.
-2. **Planning backend** — FastAPI service containing the heavier planning / research stack, deployed on Render.
-3. **Lightweight imaging backend** — FastAPI service responsible for projection-specific radiographic output, deployed separately on Render.
+1. **Firebase-hosted React + Three.js frontend**
+2. **Render-hosted FastAPI planning backend**
+3. **Firebase App Check with reCAPTCHA Enterprise**
+4. **Firebase AI Logic / Gemini Guidance**
 
 ```text
 User
- │
- ▼
+ |
+ v
+Firebase Hosting
+ |
+ v
 React + Three.js frontend
- │
- ├──────── POST /plan ────────────► Planning backend
- │                                  ├─ final-pose handling
- │                                  ├─ geometry verification checks
- │                                  ├─ waypoint generation
- │                                  └─ confidence / explanation
- │
- └──── POST /synthetic-xray ─────► Imaging backend
-                                    ├─ anatomy normalization
-                                    ├─ laterality detection
-                                    ├─ projection normalization
-                                    └─ reference-radiograph resolver
+ |
+ +--> static patient / registration / reference-X-ray assets
+ |
+ +--> Firebase App Check
+ |
+ +--> Firebase AI Logic --> Gemini Guidance
+ |
+ +--> HTTPS POST /plan
+          |
+          v
+      Render FastAPI
+      - final-pose handling
+      - waypoint planning
+      - confidence
+      - explanation
+      - geometry metadata
 ```
 
 ## 2. Frontend responsibilities
 
-The frontend under `3DVisualizer/ciartic-app` owns the interactive simulation experience.
+The frontend under `3DVisualizer/ciartic-app` owns the interactive simulator experience.
 
-Its responsibilities include:
+Responsibilities include:
 
 - rendering the patient and C-arm digital twin
 - anatomical landmark selection
-- projection selection
-- C-arm control state
+- procedure / body-region / projection selection
+- patient registration persistence and calibration
 - live Three.js transform evaluation
 - source / detector anchor tracking
 - target alignment
 - central-ray and isocenter verification
 - planner request construction
-- waypoint playback
-- simulated exposure workflow
-- fluoroscopy display
+- waypoint preview and playback
+- arrival verification
+- deterministic reference-X-ray exposure
+- fluoroscopy display and metadata
+- Gemini Guidance
+- Arduino / hardware integration hooks
 
-The frontend can solve a final pose from the live Three.js hierarchy and submit the pose to the backend together with geometry-verification metadata.
+## 3. Default patient registration
 
-## 3. Planning backend
-
-Primary entry point:
+Bundled registration:
 
 ```text
-python/bridge/api.py
+3DVisualizer/ciartic-app/public/default_patient_registration.json
+```
+
+Startup behavior:
+
+1. restore browser-saved registration if present
+2. otherwise fetch the bundled default registration
+3. allow later save/import/export/recalibration
+
+The current baseline contains LM0-LM16.
+
+## 4. Patient visualization
+
+Patient model:
+
+```text
+3DVisualizer/ciartic-app/public/medical_patient/patient.glb
+```
+
+The rendered GLB is a visual surface model. It must not be assumed to establish patient-specific anatomical registration accuracy by itself.
+
+## 5. Planning backend
+
+Primary production endpoint:
+
+```text
+https://c-arm-guidance-simulator.onrender.com/plan
 ```
 
 Important endpoint:
@@ -64,132 +99,105 @@ Important endpoint:
 POST /plan
 ```
 
-The planning backend accepts the current C-arm pose, target point, requested projection, waypoint count, and optionally a frontend-verified final pose.
-
-When a verified final pose is provided, the backend checks the supplied geometry-verification values against its acceptance limit before generating the path.
-
-The current engineering threshold is 1 mm for the simulator's scene-geometry verification. This is an internal software acceptance limit, not a demonstrated clinical accuracy figure.
+The planning backend receives the current C-arm pose, target information, requested projection, waypoint count, and scene-derived final-pose / geometry metadata.
 
 The backend returns:
 
 - start pose
 - final pose
 - interpolated waypoints
-- confidence metadata
-- explanatory notes
+- planner confidence metadata
 - solver mode
+- explanation
 - optional geometry-verification payload
 
-## 4. Imaging backend
+## 6. Geometry verification
 
-Entry point:
+The frontend evaluates the live Three.js scene hierarchy and can verify:
 
-```text
-python/bridge/synthetic_server.py
-```
+- selected landmark relative to the central ray
+- isocenter alignment
+- final-pose residual
+- current-vs-final pose agreement
+- arrival state
 
-Resolver:
+The current **1 mm scene-geometry threshold** is an internal software-engineering acceptance limit. It is not evidence of 1 mm physical or clinical accuracy.
 
-```text
-python/bridge/synthetic_xray.py
-```
+## 7. Exposure architecture
 
-Important endpoint:
-
-```http
-POST /synthetic-xray
-```
-
-The service accepts:
-
-```json
-{
-  "anatomy": "Left Hand",
-  "view": "AP",
-  "laterality": "left",
-  "angulation_deg": 0,
-  "angulation_direction": null
-}
-```
-
-The resolver normalizes the request and attempts to locate the matching image under:
+Current V2 reference images are stored in:
 
 ```text
-python/bridge/reference_xrays/
+3DVisualizer/ciartic-app/public/reference_xrays/
 ```
 
-Examples:
+`REFERENCE_XRAY_MAP` in the frontend maps supported anatomy/projection combinations to those static files.
+
+If a mapping is unavailable, the simulator explicitly reports that no reference image is available instead of showing an unconstrained generated image.
+
+This deterministic mapping is preferred for the current expert-facing simulator because unconstrained image generation may produce anatomically incorrect or projection-inconsistent output.
+
+## 8. Gemini Guidance
+
+Firebase initialization:
 
 ```text
-Left Hand + AP       -> left_hand_ap.png
-Left Hand + Lateral  -> left_hand_lateral.png
-Right Knee + AP      -> right_knee_ap.png
-Cervical Spine + AP  -> cervical_spine_ap.png
-Chest + Lateral      -> chest_lateral.png
+3DVisualizer/ciartic-app/src/firebase/firebase.js
 ```
 
-This deterministic mapping is preferred for the current expert-facing demonstration because unconstrained generative image models may produce anatomically incorrect or projection-inconsistent output.
-
-## 5. Why the imaging service is separate
-
-The original planning/render environment includes research dependencies such as PyTorch, CUDA-related packages, VTK, PyVista, and DiffDRR. These make cold builds and imports expensive on a lightweight cloud instance.
-
-The imaging API only needs a small dependency set, so it is deployed independently using:
+Assistant component:
 
 ```text
-python/requirements-synthetic.txt
+3DVisualizer/ciartic-app/src/components/GeminiAssistant.jsx
 ```
 
-This separation provides:
+Firebase provides:
 
-- faster deployment
-- faster service startup
-- reduced coupling
-- simpler failure isolation
-- lower risk that an imaging change destabilizes the planner
+- App Check
+- reCAPTCHA Enterprise
+- Firebase AI Logic
+- Gemini model access
 
-## 6. Reference-radiograph library
+The assistant receives structured simulator context and is intended to explain simulator state and workflow. It is not intended as medical advice or clinical decision support.
 
-The current reference library covers major anatomical regions with AP and lateral views, plus selected oblique views.
-
-The library is intended for research demonstration and simulator visualization. It is not a validated diagnostic dataset.
-
-Any image included in the repository should:
-
-- contain no patient-identifiable information
-- be appropriate for redistribution under its source license/permission
-- be labeled consistently with the resolver naming convention
-- be reviewed for anatomy and projection before use
-
-## 7. Deployment
+## 9. Deployment
 
 ### Frontend
 
-Deployed on Vercel and served through:
+Firebase project:
 
 ```text
-https://c-armsim.com
+c-arm-guidance-simulator
 ```
+
+Production Hosting URL:
+
+```text
+https://c-arm-guidance-simulator.web.app
+```
+
+The custom domain `c-armsim.com` is being migrated to Firebase Hosting.
 
 ### Planning backend
 
-Render service for the main planning stack.
+The main planning stack runs on Render and is called directly over HTTPS.
 
-### Imaging backend
+## 10. Legacy / experimental imaging code
 
-Render service for the lightweight synthetic/reference X-ray API.
+The repository also retains experimental imaging and DiffDRR-related infrastructure in the Python research stack, including the lightweight synthetic/reference imaging service.
 
-The frontend calls each backend directly over HTTPS with CORS configured for the production domain.
+Those components remain useful for research development but are not required for every supported V2 reference-image exposure, because the current frontend can resolve supported reference views directly from static Firebase-hosted assets.
 
-## 8. Current research boundary
+## 11. Current research boundary
 
-The architecture supports simulation and engineering evaluation. It does not currently establish:
+The architecture supports simulation and engineering evaluation. It does not establish:
 
 - clinical positioning accuracy
 - patient-specific registration accuracy
 - radiation-dose reduction
 - diagnostic accuracy
-- autonomous device safety
+- physical collision safety
+- autonomous medical-device safety
 - regulatory compliance
 
-Those require separate experimental and clinical validation.
+Those require separate experimental, physical, and clinical validation.

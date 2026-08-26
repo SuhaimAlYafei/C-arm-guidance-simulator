@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "c-arm-simulation"
-  }
+    "default": "c-arm-guidance-simulator"
+  },
+  "targets": {},
+  "etags": {}
 }

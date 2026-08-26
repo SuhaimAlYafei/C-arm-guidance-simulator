@@ -4,9 +4,10 @@
 
 - Git
 - Node.js and npm
-- Python 3
+- Python 3 for backend development
+- Firebase CLI for Firebase deployment
 
-Some research-only features may require heavier scientific or medical-imaging dependencies beyond the lightweight deployed workflow.
+Some research-only features may require heavier scientific or medical-imaging dependencies beyond the deployed V2 workflow.
 
 ## Clone the repository
 
@@ -23,11 +24,81 @@ npm install
 npm run dev
 ```
 
-The frontend contains the React/Three.js digital twin, controls, landmark registration interface, planner UI, C-arm animation, and fluoroscopy display.
+Local Vite development normally runs at:
+
+```text
+http://localhost:5173
+```
+
+The frontend contains the React/Three.js digital twin, landmark registration, planner UI, C-arm animation, deterministic reference-X-ray display, Firebase App Check, and Gemini Guidance.
+
+## Production build
+
+```bash
+npm run build
+```
+
+The generated frontend is written to:
+
+```text
+dist/
+```
+
+## Firebase Hosting
+
+Configured Firebase project:
+
+```text
+c-arm-guidance-simulator
+```
+
+Deploy with:
+
+```bash
+firebase deploy --only hosting
+```
+
+Current production Hosting URL:
+
+```text
+https://c-arm-guidance-simulator.web.app
+```
+
+The custom domain `c-armsim.com` is being migrated to Firebase Hosting.
+
+## Firebase App Check
+
+Development builds enable the App Check debug provider through Vite's development mode.
+
+Do not commit generated App Check debug-token values.
+
+Production uses reCAPTCHA Enterprise through Firebase App Check.
+
+## Gemini Guidance
+
+Firebase AI initialization:
+
+```text
+3DVisualizer/ciartic-app/src/firebase/firebase.js
+```
+
+Assistant component:
+
+```text
+3DVisualizer/ciartic-app/src/components/GeminiAssistant.jsx
+```
+
+Gemini Guidance receives simulator context and is intended to explain the software state. It is not clinical decision support.
 
 ## Main planning backend
 
-From the repository root:
+Production planner endpoint:
+
+```text
+https://c-arm-guidance-simulator.onrender.com/plan
+```
+
+For local backend development from the repository root:
 
 ```bash
 pip install -r python/requirements.txt
@@ -35,32 +106,38 @@ cd python
 uvicorn bridge.api:app --host 0.0.0.0 --port 8000
 ```
 
-The planning backend provides pose/path planning, confidence output, and geometry-verification handling. Optional DRR-related features may require additional datasets and environment configuration.
+The planning backend provides pose/path planning, confidence output, explanation, and geometry-verification handling.
 
-## Lightweight imaging backend
+## Default registration
 
-From the repository root:
-
-```bash
-pip install -r python/requirements-synthetic.txt
-cd python
-uvicorn bridge.synthetic_server:app --host 0.0.0.0 --port 8001
-```
-
-This service resolves anatomy + projection requests against the reference-radiograph library and is intentionally kept lightweight for fast deployment.
-
-## Reference radiographs
-
-Projection-specific demo images live in:
+Bundled registration:
 
 ```text
-python/bridge/reference_xrays/
+3DVisualizer/ciartic-app/public/default_patient_registration.json
 ```
 
-Do not add patient-identifiable material. Confirm redistribution rights for externally sourced radiographs before committing them to a public repository.
+A saved browser calibration takes precedence over the bundled default.
 
-## Deployed demo
+## Patient model
 
-The public research simulator is available at:
+```text
+3DVisualizer/ciartic-app/public/medical_patient/patient.glb
+```
 
-https://c-armsim.com
+## Reference X-rays
+
+Current V2 frontend reference assets:
+
+```text
+3DVisualizer/ciartic-app/public/reference_xrays/
+```
+
+Only supported anatomy/projection mappings display reference images. Unsupported mappings intentionally produce a no-reference-image state.
+
+## Legacy / experimental imaging service
+
+The repository still contains lightweight imaging and DiffDRR-related research code. Those components can be run for development, but they are not required for every supported V2 reference exposure.
+
+## Research warning
+
+The simulator is for research, education, and engineering development. Do not use it for patient care, diagnosis, radiation control, or autonomous operation of medical equipment.

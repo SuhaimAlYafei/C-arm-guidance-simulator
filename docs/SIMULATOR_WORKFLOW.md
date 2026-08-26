@@ -1,46 +1,86 @@
-# Simulator Workflow
+# Simulator Workflow - V2
 
-## 1. Select the imaging request
+## 1. Open the simulator
 
-The operator chooses a procedure/body region, anatomical landmark, and projection. The interface also supports a short natural-language request that is interpreted into the structured planner controls.
+The Firebase-hosted application loads the digital twin, patient visualization, registration data, and simulator controls.
 
-## 2. Load or calibrate anatomical landmarks
+## 2. Registration
 
-The simulator uses registered anatomical landmarks on the 3D patient model. Calibration mode exposes the landmark skeleton and allows controlled adjustment before saving the registration.
+If a browser-saved registration exists, it is restored.
 
-## 3. Preview the path
+Otherwise the bundled default registration is loaded from:
 
-`PREVIEW PATH` solves the requested final C-arm pose using the live Three.js scene hierarchy and checks the selected target against the simulated source-detector central ray.
+```text
+/default_patient_registration.json
+```
 
-A path is accepted only when the configured scene-geometry checks pass. The current simulator uses a 1 mm internal acceptance threshold for isocenter and central-ray alignment. This is a software-engineering tolerance, not a demonstrated clinical accuracy claim.
+The current baseline includes LM0-LM16.
 
-## 4. Inspect confidence and geometry
+## 3. Select the imaging request
 
-The planner reports:
+Choose the procedure/body region, anatomical landmark, and projection. The interface can also interpret a short natural-language request into the structured simulator controls.
 
-- request and anatomical region
+## 4. Preview the path
+
+Press `PREVIEW PATH`.
+
+The frontend uses the live Three.js scene to solve and verify the requested target geometry, then sends the planning request to the production Render `/plan` service.
+
+A path is accepted only when the configured scene-geometry checks pass.
+
+The current 1 mm internal threshold is a software-engineering tolerance inside the simulator, not a demonstrated clinical accuracy claim.
+
+## 5. Inspect planner and geometry information
+
+The simulator can report:
+
+- request and anatomy
 - target coordinates
 - planned final pose
-- confidence score
+- planner confidence
 - geometry-verification state
 - isocenter error
 - central-ray error
-- planner explanation
+- planning explanation
 
-## 5. Move the C-arm
+## 6. Move the C-arm
 
-`MOVE C-ARM` executes the waypoint sequence in the digital twin. The final geometry is preserved from the verified scene solution rather than being silently replaced after planning.
+Press `MOVE C-ARM`.
 
-## 6. Arrive and expose
+The digital C-arm follows the waypoint sequence returned by the planner.
 
-After the system reaches the verified final pose, the workflow enters `ARRIVED`. `EXPOSE X-RAY` then requests a projection-specific simulated radiographic image.
+## 7. Arrival verification
 
-Where a verified reference is available, the imaging service prefers deterministic anatomy/projection mapping over unconstrained image generation.
+At the final waypoint the simulator evaluates the achieved pose against the planned final pose and geometry information.
 
-## 7. Output
+A successful workflow reaches:
 
-The simulated fluoroscopy display shows the resulting image and supports downloading the generated/demo radiograph and associated metadata.
+```text
+ARRIVED
+```
+
+## 8. Exposure
+
+Press `EXPOSE X-RAY`.
+
+If `REFERENCE_XRAY_MAP` contains a supported anatomy/projection mapping, the frontend displays the corresponding static reference radiograph from `public/reference_xrays/`.
+
+If the mapping does not exist, the interface explicitly reports that no reference image is available instead of fabricating a radiograph.
+
+## 9. Output
+
+The fluoroscopy display shows the selected reference image when available and records exposure metadata such as anatomy, projection, planner status, geometry-verification state, and renderer/reference source.
+
+## 10. Gemini Guidance
+
+Gemini Guidance can explain simulator state, planning information, geometry verification, and the latest exposure information supplied to it by the application.
+
+It is not a clinical decision-support system.
+
+## 11. Calibration tools
+
+Landmarks can be recalibrated, saved locally, exported, and imported for simulator research.
 
 ## Safety and scope
 
-The workflow is for research and education. It is not approved for clinical positioning, diagnosis, treatment, radiation-dose control, or autonomous operation of real medical equipment.
+This workflow is for research, education, and engineering development. It is not approved for clinical positioning, diagnosis, treatment, radiation-dose control, or autonomous operation of real medical equipment.
