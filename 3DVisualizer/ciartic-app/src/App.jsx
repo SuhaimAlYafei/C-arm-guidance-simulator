@@ -9,7 +9,120 @@ import ControllerPanel from './components/ControllerPanel';
 import Instructions from './components/Instructions';
 import { CONTROL_SPECS, DEVICE_PROFILE } from './constants';
 
-const R2D = 180 / Math.PI;
+const DEFAULT_REGISTRATION_URL =
+    '/default_patient_registration.json';
+    
+const REFERENCE_XRAY_MAP = {
+    LM0: {
+        AP: '/reference_xrays/pelvis_ap.png',
+        LEFT_LATERAL: '/reference_xrays/pelvis_lateral.png',
+        RIGHT_LATERAL: '/reference_xrays/pelvis_lateral.png'
+    },
+
+    LM1: {
+        AP: '/reference_xrays/right_hip_ap.png',
+        LEFT_LATERAL: '/reference_xrays/right_hip_lateral.png',
+        RIGHT_LATERAL: '/reference_xrays/right_hip_lateral.png'
+    },
+
+    LM2: {
+        AP: '/reference_xrays/right_knee_ap.png',
+        LEFT_LATERAL: '/reference_xrays/right_knee_lateral.png',
+        RIGHT_LATERAL: '/reference_xrays/right_knee_lateral.png'
+    },
+
+    LM3: {
+        AP: '/reference_xrays/right_ankle_ap.png',
+        LEFT_LATERAL: '/reference_xrays/right_ankle_lateral.png',
+        RIGHT_LATERAL: '/reference_xrays/right_ankle_lateral.png'
+    },
+
+    LM4: {
+        AP: '/reference_xrays/left_hip_ap.png',
+        LEFT_LATERAL: '/reference_xrays/left_hip_lateral.png',
+        RIGHT_LATERAL: '/reference_xrays/left_hip_lateral.png'
+    },
+
+    LM5: {
+        AP: '/reference_xrays/left_knee_ap.png',
+        LEFT_LATERAL: '/reference_xrays/left_knee_lateral.png',
+        RIGHT_LATERAL: '/reference_xrays/left_knee_lateral.png'
+    },
+
+    LM6: {
+        AP: '/reference_xrays/left_ankle_ap.png',
+        LEFT_LATERAL: '/reference_xrays/left_ankle_lateral.png',
+        RIGHT_LATERAL: '/reference_xrays/left_ankle_lateral.png'
+    },
+
+    LM7: {
+        AP: '/reference_xrays/abdomen_ap.png',
+        LEFT_LATERAL: '/reference_xrays/abdomen_lateral.png',
+        RIGHT_LATERAL: '/reference_xrays/abdomen_lateral.png'
+    },
+
+    LM8: {
+        AP: '/reference_xrays/chest_ap.png',
+        LEFT_LATERAL: '/reference_xrays/chest_lateral.png',
+        RIGHT_LATERAL: '/reference_xrays/chest_lateral.png'
+    },
+
+    LM9: {
+        AP: '/reference_xrays/cervical_spine_ap.png',
+        LEFT_LATERAL: '/reference_xrays/cervical_spine_lateral.png',
+        RIGHT_LATERAL: '/reference_xrays/cervical_spine_lateral.png'
+    },
+
+    LM10: {
+        AP: '/reference_xrays/skull_ap.png',
+        LEFT_LATERAL: '/reference_xrays/skull_lateral.png',
+        RIGHT_LATERAL: '/reference_xrays/skull_lateral.png'
+    },
+
+    LM11: {
+        AP: '/reference_xrays/left_shoulder_ap.png',
+        LEFT_LATERAL: '/reference_xrays/left_shoulder_lateral.png',
+        RIGHT_LATERAL: '/reference_xrays/left_shoulder_lateral.png',
+        RAO: '/reference_xrays/left_shoulder_oblique.png',
+        LAO: '/reference_xrays/left_shoulder_oblique.png'
+    },
+
+    LM12: {
+        AP: '/reference_xrays/left_elbow_ap.png',
+        LEFT_LATERAL: '/reference_xrays/left_elbow_lateral.png',
+        RIGHT_LATERAL: '/reference_xrays/left_elbow_lateral.png',
+        RAO: '/reference_xrays/left_elbow_oblique.png',
+        LAO: '/reference_xrays/left_elbow_oblique.png'
+    },
+
+    LM13: {
+        AP: '/reference_xrays/left_hand_ap.png',
+        LEFT_LATERAL: '/reference_xrays/left_hand_lateral.png',
+        RIGHT_LATERAL: '/reference_xrays/left_hand_lateral.png',
+        RAO: '/reference_xrays/left_hand_oblique.png',
+        LAO: '/reference_xrays/left_hand_oblique.png'
+    },
+
+    LM14: {
+        AP: '/reference_xrays/right_shoulder_ap.png',
+        LEFT_LATERAL: '/reference_xrays/right_shoulder_lateral.png',
+        RIGHT_LATERAL: '/reference_xrays/right_shoulder_lateral.png',
+        RAO: '/reference_xrays/right_shoulder_oblique.png',
+        LAO: '/reference_xrays/right_shoulder_oblique.png'
+    },
+
+    LM15: {
+        AP: '/reference_xrays/right_elbow_ap.png',
+        LEFT_LATERAL: '/reference_xrays/right_elbow_lateral.png',
+        RIGHT_LATERAL: '/reference_xrays/right_elbow_lateral.png'
+    },
+
+    LM16: {
+        AP: '/reference_xrays/right_hand_ap.png',
+        LEFT_LATERAL: '/reference_xrays/right_hand_lateral.png',
+        RIGHT_LATERAL: '/reference_xrays/right_hand_lateral.png'
+    }
+};const R2D = 180 / Math.PI;
 const D2R = Math.PI / 180;
 
 const PLANNER_URL = 'https://c-arm-guidance-simulator.onrender.com/plan';
@@ -80,8 +193,7 @@ const LANDMARK_EDGE_IDS = [
 ];
 
 // --- CONFIGURATION ---
-const PATIENT_URL = 'https://raw.githubusercontent.com/iyad-salameh/C_arm_guidance_APAH/main/assets/patient.glb?v=3';
-
+const PATIENT_URL = '/medical_patient/patient.glb';
 const realsense_URL = 'https://raw.githubusercontent.com/iyad-salameh/C_arm_guidance_APAH/main/assets/realsense.glb?v=1';
 const ISO_WORLD = new THREE.Vector3(0, 1.45, 0);
 
@@ -867,6 +979,7 @@ const App = () => {
     };
     const [beamActive, setBeamActive] = useState(false);
     const [lastXray, setLastXray] = useState(null);
+    const [lastExposureInfo, setLastExposureInfo] = useState(null);
     const [currentAnatomy, setCurrentAnatomy] = useState("READY");
     const [debugEnabled, setDebugEnabled] = useState(false);
     const [debugReadout, setDebugReadout] = useState(null);
@@ -1127,15 +1240,71 @@ const App = () => {
     };
 
     useEffect(() => {
+    const restoreRegistration = async () => {
         try {
-            const saved = localStorage.getItem(LANDMARK_REGISTRATION_STORAGE_KEY);
-            if (saved) applyRegistrationPayload(JSON.parse(saved), 'browser storage');
+            const saved =
+                localStorage.getItem(
+                    LANDMARK_REGISTRATION_STORAGE_KEY
+                );
+
+            // 1. Prefer a user's previously saved calibration.
+            if (saved) {
+                applyRegistrationPayload(
+                    JSON.parse(saved),
+                    'browser storage'
+                );
+
+                return;
+            }
+
+            // 2. Otherwise load the built-in default calibration.
+            const response = await fetch(
+                DEFAULT_REGISTRATION_URL,
+                {
+                    cache: 'no-cache'
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(
+                    `Default registration returned HTTP ${response.status}`
+                );
+            }
+
+            const payload = await response.json();
+
+            applyRegistrationPayload(
+                payload,
+                'default patient registration'
+            );
+
+            // Store it so future reloads are immediate.
+            localStorage.setItem(
+                LANDMARK_REGISTRATION_STORAGE_KEY,
+                JSON.stringify(payload)
+            );
+
+            console.log(
+                'Default patient registration loaded:',
+                payload
+            );
         } catch (error) {
-            console.warn('Could not restore landmark registration:', error);
+            console.warn(
+                'Could not restore landmark registration:',
+                error
+            );
+
+            setCalibrationMessage(
+                `Default registration could not be loaded: ${error.message}`
+            );
         }
-        // Run once after the scene and UI initialize.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    };
+
+    restoreRegistration();
+
+    // Run once after the scene and UI initialize.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
     // Scene Graph Refs
     const cartRef = useRef(null);
@@ -2529,17 +2698,18 @@ const App = () => {
         setPlannerStatus('CANCELLED');
     };
 
-    const handleTakeXray = async () => {
-        // SYNTHETIC_XRAY_ENDPOINT: AI exposure path only. Planner and C-arm geometry stay untouched.
+        const handleTakeXray = async () => {
         const shotControls = { ...controls };
 
         let regionKeyAtShot = "miss";
+
         if (srcAnchorRef.current && detAnchorRef.current) {
             srcAnchorRef.current.updateMatrixWorld(true);
             detAnchorRef.current.updateMatrixWorld(true);
 
             const worldSource = new THREE.Vector3();
             const worldDetector = new THREE.Vector3();
+
             srcAnchorRef.current.getWorldPosition(worldSource);
             detAnchorRef.current.getWorldPosition(worldDetector);
 
@@ -2549,7 +2719,10 @@ const App = () => {
                 patientModelRef.current,
                 patientBoundsRef.current
             );
-            regionKeyAtShot = classification.hit ? classification.zoneKey : "miss";
+
+            regionKeyAtShot = classification.hit
+                ? classification.zoneKey
+                : "miss";
         }
 
         const geometry = captureExposureGeometry(
@@ -2563,7 +2736,10 @@ const App = () => {
             return;
         }
 
-        const anatomyInfo = ANATOMICAL_TARGETS[selectedAnatomy] || ANATOMICAL_TARGETS.MANUAL;
+        const anatomyInfo =
+            ANATOMICAL_TARGETS[selectedAnatomy]
+            || ANATOMICAL_TARGETS.MANUAL;
+
         const projection = getProjectionConfig(
             selectedProjection,
             anatomyInfo,
@@ -2573,30 +2749,38 @@ const App = () => {
         const anatomyLabel =
             anatomyInfo?.shortLabel
             || anatomyInfo?.label
-            || anatomyInfo?.regionLabel
-            || regionKeyAtShot
-            || 'anatomy';
+            || selectedAnatomy;
 
         const fullAnatomyText = [
             anatomyInfo?.label,
             anatomyInfo?.regionLabel,
             anatomyLabel
-        ].filter(Boolean).join(' ');
+        ]
+            .filter(Boolean)
+            .join(" ");
 
         const laterality = /\bleft\b/i.test(fullAnatomyText)
-            ? 'left'
+            ? "left"
             : /\bright\b/i.test(fullAnatomyText)
-                ? 'right'
+                ? "right"
                 : null;
 
-        const angulationDirection = selectedProjection === 'CAUDAL'
-            ? 'caudal'
-            : selectedProjection === 'CRANIAL'
-                ? 'cranial'
-                : null;
+        const angulationDirection =
+            selectedProjection === "CAUDAL"
+                ? "caudal"
+                : selectedProjection === "CRANIAL"
+                    ? "cranial"
+                    : null;
+
+        const referencePath =
+            REFERENCE_XRAY_MAP[selectedAnatomy]?.[selectedProjection]
+            ?? null;
 
         const now = new Date();
-        const sampleId = `sample_${now.toISOString().replace(/[:.]/g, "-")}`;
+
+        const sampleId =
+            `sample_${now.toISOString().replace(/[:.]/g, "-")}`;
+
         const annotation = {
             sample_id: sampleId,
             image_filename: `${sampleId}.png`,
@@ -2604,102 +2788,288 @@ const App = () => {
             ...geometry
         };
 
+        const geometryVerified =
+            plannerResult?.geometry_verification?.verified === true;
+
+        const poseMatched = Boolean(
+            plannerResult?.final_pose
+            && posesMatch(
+                shotControls,
+                plannerResult.final_pose
+            )
+        );
+
         setBeamActive(true);
-        setCurrentAnatomy('ACQUIRING...');
+        setCurrentAnatomy("ACQUIRING...");
 
         try {
-            // Brief acquisition phase so exposure behaves like an imaging workflow,
-            // while the actual generation time provides the processing delay.
-            await new Promise(resolve => setTimeout(resolve, 650));
-            setCurrentAnatomy('PROCESSING...');
+            await new Promise(resolve =>
+                setTimeout(resolve, 650)
+            );
 
-            const response = await fetch(
-                'https://c-arm-synthetic-xray.onrender.com/synthetic-xray',
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Accept: 'application/json'
-                    },
-                    body: JSON.stringify({
-                        anatomy: anatomyLabel,
-                        view: projection?.label || selectedProjection || 'AP',
+            // A validated dataset image exists for this exact
+            // landmark/projection.
+            if (referencePath) {
+                const completedAnnotation = {
+                    ...annotation,
+
+                    renderer: {
+                        mode: "validated_reference_xray",
+                        dataset_id: "reference_xrays_v1",
+                        synthetic: false,
+
+                        reference_image: referencePath,
+
+                        requested_anatomy: anatomyLabel,
+
+                        requested_view:
+                            projection?.label
+                            || selectedProjection
+                            || "AP",
+
                         laterality,
-                        angulation_deg: Number.isFinite(Number(projection?.angleDeg))
-                            ? Number(projection.angleDeg)
-                            : 0,
-                        angulation_direction: angulationDirection
-                    })
-                }
-            );
 
-            if (!response.ok) {
-                let message = `Synthetic X-ray server returned HTTP ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    if (errorData?.detail) message = String(errorData.detail);
-                } catch {
-                    // Keep the HTTP message when the response is not JSON.
-                }
-                throw new Error(message);
-            }
+                        angulation_deg:
+                            Number(
+                                projection?.angleDeg || 0
+                            ),
 
-            const result = await response.json();
-            if (!result.image_base64 || !result.mime_type) {
-                throw new Error('Synthetic X-ray server returned no usable image.');
-            }
+                        angulation_direction:
+                            angulationDirection
+                    }
+                };
 
-            const xrayDataUrl = `data:${result.mime_type};base64,${result.image_base64}`;
-            const completedAnnotation = {
-                ...annotation,
-                renderer: {
-                    mode: 'ai_synthetic_radiograph',
-                    provider: result.source || 'cloudflare_workers_ai',
-                    model: result.model || 'unknown',
-                    synthetic: true,
-                    requested_anatomy: anatomyLabel,
-                    requested_view: projection?.label || selectedProjection || 'AP',
+                setLastXray(referencePath);
+
+                setCurrentAnatomy(
+                    String(anatomyLabel).toUpperCase()
+                );
+
+                setLastExposureInfo({
+                    status: "CAPTURED",
+
+                    sampleId,
+
+                    capturedAt:
+                        now.toISOString(),
+
+                    anatomy:
+                        anatomyLabel,
+
+                    projection:
+                        projection?.label
+                        || selectedProjection
+                        || "AP",
+
                     laterality,
-                    angulation_deg: Number(projection?.angleDeg || 0),
-                    angulation_direction: angulationDirection
+
+                    renderer:
+                        "REFERENCE X-RAY",
+
+                    synthetic:
+                        false,
+
+                    plannerStatus,
+
+                    geometryVerified,
+
+                    isocenterErrorMm:
+                        plannerResult
+                            ?.geometry_verification
+                            ?.isocenter_error_mm
+                        ?? null,
+
+                    centralRayErrorMm:
+                        plannerResult
+                            ?.geometry_verification
+                            ?.central_ray_error_mm
+                        ?? null,
+
+                    poseMatched
+                });
+
+                setTimeout(() => {
+                    downloadJson(
+                        completedAnnotation,
+                        `${sampleId}_REFERENCE_XRAY.json`
+                    );
+                }, 150);
+
+                console.log(
+                    "Validated reference X-ray exposure used:",
+                    completedAnnotation
+                );
+
+                return;
+            }
+
+            // The geometry can still be valid even when we do not
+            // have a validated image for this projection.
+            const unavailableReason =
+                `No validated reference X-ray is available for `
+                + `${anatomyLabel} / `
+                + `${projection?.label || selectedProjection}.`;
+
+            setLastXray(null);
+
+            setCurrentAnatomy(
+    `NO REFERENCE IMAGE — ${
+        projection?.label || selectedProjection
+    }`
+);
+
+            const unavailableAnnotation = {
+                ...annotation,
+
+                renderer: {
+                    mode:
+                        "no_validated_reference",
+
+                    dataset_id:
+                        "reference_xrays_v1",
+
+                    synthetic:
+                        false,
+
+                    requested_anatomy:
+                        anatomyLabel,
+
+                    requested_view:
+                        projection?.label
+                        || selectedProjection
+                        || "AP",
+
+                    laterality,
+
+                    angulation_deg:
+                        Number(
+                            projection?.angleDeg || 0
+                        ),
+
+                    angulation_direction:
+                        angulationDirection,
+
+                    reason:
+                        unavailableReason
                 }
             };
 
-            setLastXray(xrayDataUrl);
-            setCurrentAnatomy(String(anatomyLabel).toUpperCase());
+            setLastExposureInfo({
+                status:
+                    "IMAGE UNAVAILABLE",
 
-            downloadDataUrl(xrayDataUrl, `${sampleId}_AI_SYNTHETIC.png`);
+                sampleId,
+
+                capturedAt:
+                    now.toISOString(),
+
+                anatomy:
+                    anatomyLabel,
+
+                projection:
+                    projection?.label
+                    || selectedProjection
+                    || "AP",
+
+                laterality,
+
+                renderer:
+                    "NO VALIDATED REFERENCE",
+
+                synthetic:
+                    false,
+
+                plannerStatus,
+
+                geometryVerified,
+
+                isocenterErrorMm:
+                    plannerResult
+                        ?.geometry_verification
+                        ?.isocenter_error_mm
+                    ?? null,
+
+                centralRayErrorMm:
+                    plannerResult
+                        ?.geometry_verification
+                        ?.central_ray_error_mm
+                    ?? null,
+
+                poseMatched,
+
+                fallbackReason:
+                    unavailableReason
+            });
+
             setTimeout(() => {
-                downloadJson(completedAnnotation, `${sampleId}_AI_SYNTHETIC.json`);
+                downloadJson(
+                    unavailableAnnotation,
+                    `${sampleId}_NO_VALIDATED_IMAGE.json`
+                );
             }, 150);
 
-            console.log('AI synthetic exposure generated:', completedAnnotation);
+            console.warn(
+                unavailableReason
+            );
         } catch (error) {
-            console.error('AI synthetic exposure generation failed:', error);
-
-            // Safe demo fallback: preserve the existing landmark-aware atlas image
-            // instead of leaving the monitor blank when the free AI service is unavailable.
-            const fallbackDataUrl = generateLandmarkAtlasXray(
-                selectedAnatomy,
-                selectedProjection
+            console.error(
+                "Exposure workflow failed:",
+                error
             );
 
-            const fallbackAnnotation = {
-                ...annotation,
-                renderer: {
-                    mode: 'synthetic_landmark_atlas_fallback',
-                    dataset_id: 'skeleton_atlas_v1',
-                    selected_landmark: annotation.selected_landmark,
-                    reason: error?.message || String(error)
-                }
-            };
+            setLastXray(null);
 
-            setLastXray(fallbackDataUrl);
-            setCurrentAnatomy(String(anatomyLabel).toUpperCase());
-            downloadDataUrl(fallbackDataUrl, `${sampleId}_SIMULATED_ATLAS.png`);
-            setTimeout(() => {
-                downloadJson(fallbackAnnotation, `${sampleId}_SIMULATED_ATLAS.json`);
-            }, 150);
+            setCurrentAnatomy(
+                "EXPOSURE ERROR"
+            );
+
+            setLastExposureInfo({
+                status:
+                    "ERROR",
+
+                sampleId,
+
+                capturedAt:
+                    now.toISOString(),
+
+                anatomy:
+                    anatomyLabel,
+
+                projection:
+                    projection?.label
+                    || selectedProjection
+                    || "AP",
+
+                laterality,
+
+                renderer:
+                    "NONE",
+
+                synthetic:
+                    false,
+
+                plannerStatus,
+
+                geometryVerified,
+
+                isocenterErrorMm:
+                    plannerResult
+                        ?.geometry_verification
+                        ?.isocenter_error_mm
+                    ?? null,
+
+                centralRayErrorMm:
+                    plannerResult
+                        ?.geometry_verification
+                        ?.central_ray_error_mm
+                    ?? null,
+
+                poseMatched,
+
+                fallbackReason:
+                    error?.message
+                    || String(error)
+            });
         } finally {
             setBeamActive(false);
         }
@@ -3855,7 +4225,6 @@ const App = () => {
             loadModel(realsense_URL),
             loadModel('/fire_extinguisher/scene.gltf'),
             loadModel('/first_aid_box/scene.gltf'),
-            loadModel('/female_human_skeleton_-_zbrush_-_anatomy_study/scene.gltf')
         ]).then((results) => {
             if (!mounted) return;
 
@@ -3876,15 +4245,61 @@ const App = () => {
                 };
                 patientModelRef.current = patientModel;
 
-                const patientSize = new THREE.Vector3();
-                patientBox.getSize(patientSize);
-                const maxDimP = Math.max(patientSize.x, patientSize.y, patientSize.z);
-                if (maxDimP > 0) {
-                    const scale = 1.7 / maxDimP;
-                    patientModel.scale.set(scale, scale, scale);
-                }
-                patientModel.rotation.set(-Math.PI / 2, 0, Math.PI);
-                patientModel.position.set(0, 1.50, 0.0);
+              const patientSize = new THREE.Vector3();
+patientBox.getSize(patientSize);
+
+const maxDimP = Math.max(
+    patientSize.x,
+    patientSize.y,
+    patientSize.z
+);
+
+if (maxDimP > 0) {
+    const scale = 1.70 / maxDimP;
+    patientModel.scale.setScalar(scale);
+}
+
+// Convert the model from standing to supine.
+// Native Y = body height.
+// After this rotation, body length runs along the table.
+patientModel.rotation.set(
+    -Math.PI / 2,
+    0,
+    Math.PI
+);
+
+// Start from a neutral position before calculating bounds.
+patientModel.position.set(0, 0, 0);
+
+patientModel.updateMatrixWorld(true);
+
+// Measure AFTER scale + rotation.
+let alignedBox = new THREE.Box3().setFromObject(patientModel);
+const alignedCenter = new THREE.Vector3();
+alignedBox.getCenter(alignedCenter);
+
+// Target surface height of the blue patient table.
+const TABLE_SURFACE_Y = 1.35;
+
+// Center the patient across the table,
+// center the body along its length,
+// and place the lowest part on the tabletop.
+patientModel.position.x += -alignedCenter.x;
+patientModel.position.z += -alignedCenter.z;
+patientModel.position.y += TABLE_SURFACE_Y - alignedBox.min.y;
+
+patientModel.updateMatrixWorld(true);
+
+// Final verification bounds.
+alignedBox = new THREE.Box3().setFromObject(patientModel);
+alignedBox.getCenter(alignedCenter);
+
+console.log("PATIENT FINAL BOUNDS:", {
+    min: alignedBox.min,
+    max: alignedBox.max,
+    center: alignedCenter,
+    size: alignedBox.getSize(new THREE.Vector3())
+});
                 patientModel.traverse(n => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
                 bedGroup.add(patientModel);
 
@@ -3971,29 +4386,8 @@ const App = () => {
                 aidModel.traverse(n => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
                 scene.add(aidModel);
             }
+});
 
-            // 5. Female Skeleton
-            const femSkelGltf = getModel(4);
-            if (femSkelGltf) {
-                const skelModel = femSkelGltf.scene;
-                const skelBox = new THREE.Box3().setFromObject(skelModel);
-                const skelSize = new THREE.Vector3();
-                skelBox.getSize(skelSize);
-                const maxDimS = skelSize.y; // Height is main dimension
-                if (maxDimS > 0) {
-                    const scale = 1.7 / maxDimS; // 1.7m tall
-                    skelModel.scale.set(scale, scale, scale);
-                }
-                // Midpoint between First Aid (X=2) and MOEHE (X=0) -> X=1
-                // Moved Up 1m (Y=1) and Left 3.5m (X = 1 - 3.5 = -2.5)
-                skelModel.position.set(-2.5, 1.0, 4.95);
-                skelModel.rotation.y = Math.PI; // Face room
-                skelModel.traverse(n => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
-                scene.add(skelModel);
-            } else {
-                console.warn("Skeleton model failed to load (likely missing extension support):", results[4].reason);
-            }
-        });
 
         // --- ROBOT CART (Procedural) ---
         const cartRoot = new THREE.Group();

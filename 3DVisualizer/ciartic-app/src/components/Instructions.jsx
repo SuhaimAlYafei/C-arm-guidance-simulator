@@ -1,280 +1,605 @@
 import React, { useState } from 'react';
-import simOverviewImg from '../public/sim_overview.png';
-import navigateImg from '../public/navigate.png';
-import controlsPanelImg from '../public/controls_panel.png';
-import realXrayExposeImg from '../public/real-xray-expose.png';
-import keyboardLegendImg from '../public/keyboard_legend.png';
-import debugModeImg from '../public/debugMode.png';
-import debugOverlayImg from '../public/debugOverlay.png';
-import prototypeImg from '../public/movePhysicalModel.gif';
-import usbPlugImg from '../public/usbPlug.png';
 
 const Instructions = ({ onClose }) => {
     const [page, setPage] = useState(0);
 
     const pages = [
         {
-            title: "Welcome to CIARTIC Simulation",
-            image: simOverviewImg,
-            content: "This is a 3D medical simulation for C-arm guidance. You can use this app to simulate X-ray imaging and positioning."
-        },
-        {
-            title: "Camera & Navigation",
-            image: navigateImg,
-            content: "Use your mouse to look around.\nLeft Click + Drag: Rotate camera\nRight Click + Drag: Pan camera\nScroll Wheel: Zoom in/out"
-        },
-        {
-            title: "C-Arm Controls",
-            image: controlsPanelImg,
+            title: "C-Arm Guidance Simulator",
+            badge: "WELCOME",
             content: (
                 <>
-                    Use the control panel on the right to adjust the C-arm positioning.<br />
-                    <strong>Arrows:</strong> Move the machine along the floor.<br />
-                    <strong>Lift:</strong> Adjust height.<br />
-                    <strong>WigWag:</strong> Angle the detector horizontally.<br />
-                    <strong>Orbital:</strong> Angle the detector vertically.<br />
-                    <strong>Column Rot:</strong> Rotate the main column.<br />
-                    <strong>Expose:</strong> Capture an X-ray image.
+                    <p>
+                        This simulator demonstrates an AI-guided workflow for
+                        planning and reproducing C-arm imaging positions.
+                    </p>
+
+                    <p>
+                        The system combines anatomical landmark targeting,
+                        projection selection, geometric path planning,
+                        simulated C-arm motion, and X-ray reference imaging.
+                    </p>
+
+                    <div style={calloutStyle}>
+                        <strong>Recommended workflow</strong><br />
+                        Select Target → Preview Path → Move C-Arm → Expose X-Ray
+                    </div>
+
+                    <p style={warningStyle}>
+                        Research and simulation environment only. Not for
+                        diagnostic or clinical use.
+                    </p>
                 </>
             )
         },
+
         {
-            title: "Taking X-Rays",
-            image: realXrayExposeImg,
-            content: "Once the patient is in the beam path, click the orange EXPOSE button on the control panel to capture an image. The live fluoroscopy view will update with the simulated X-ray."
+            title: "1. Select the Imaging Target",
+            badge: "TARGET",
+            content: (
+                <>
+                    <p>
+                        Start with the <strong>AI Path Planner</strong>.
+                    </p>
+
+                    <p>
+                        Select the required procedure, anatomical region,
+                        landmark, and imaging projection.
+                    </p>
+
+                    <div style={stepStyle}>
+                        <strong>Procedure</strong><br />
+                        Choose the type of imaging workflow.
+                    </div>
+
+                    <div style={stepStyle}>
+                        <strong>Anatomical Target</strong><br />
+                        Select the landmark that should be positioned at the
+                        imaging isocenter.
+                    </div>
+
+                    <div style={stepStyle}>
+                        <strong>Projection</strong><br />
+                        Choose AP, lateral, oblique, cranial, caudal, or another
+                        available projection.
+                    </div>
+
+                    <p>
+                        For oblique views, adjust the requested angle when the
+                        control is available.
+                    </p>
+                </>
+            )
         },
+
         {
-            title: "Keyboard Shortcuts",
-            image: keyboardLegendImg,
-            content: "Press I to toggle this Instructions canvas\n\nPress P to toggle Patient visibility\n\nPress L to toggle skeleton landmarks\n\nPress D to toggle the Debug view & floor labels\n\nPress C to connect/disconnect the External Hardware Serial"
+            title: "2. Preview the Planned Path",
+            badge: "PLAN",
+            content: (
+                <>
+                    <p>
+                        Press <strong>PREVIEW PATH</strong> before moving the
+                        simulated C-arm.
+                    </p>
+
+                    <p>
+                        The planner calculates a trajectory from the current
+                        machine pose to the requested imaging pose.
+                    </p>
+
+                    <div style={calloutStyle}>
+                        The preview lets you inspect the planned motion before
+                        commanding the C-arm to move.
+                    </div>
+
+                    <p>
+                        Review the target, requested projection, path, and final
+                        pose before continuing.
+                    </p>
+                </>
+            )
         },
+
         {
-            title: "Hardware Connection",
-            images: [prototypeImg, usbPlugImg],
-            content: "To control the simulation using the physical C-arm prototype, connect the Arduino to your computer via a USB cable (this is a must).\n\nOnce connected via USB, press the C button on your keyboard to establish the connection."
+            title: "3. Move the C-Arm",
+            badge: "MOVE",
+            content: (
+                <>
+                    <p>
+                        After reviewing the planned trajectory, press
+                        <strong> MOVE C-ARM</strong>.
+                    </p>
+
+                    <p>
+                        The simulator follows the generated waypoints until the
+                        planned final pose is reached.
+                    </p>
+
+                    <div style={stepStyle}>
+                        <strong>During movement</strong><br />
+                        The cart and C-arm joints update according to the
+                        planned trajectory.
+                    </div>
+
+                    <div style={stepStyle}>
+                        <strong>At arrival</strong><br />
+                        The simulator checks the achieved pose against the
+                        planned imaging geometry.
+                    </div>
+
+                    <p>
+                        Do not use the exposure result as evidence of correct
+                        positioning unless the simulator reports the geometry
+                        as verified.
+                    </p>
+                </>
+            )
         },
+
         {
-            title: "Debugging & Calibration",
-            images: [debugModeImg, debugOverlayImg],
-            content: "Press D to toggle Debug Mode. This helps with calibration by showing real-time spatial positioning, XYZ coordinate lines, and floor boundaries.\n\nUse the CAM and RS buttons on the debug overlay (bottom-left) to manually adjust the Camera and RealSense depth sensor offsets and rotations."
+            title: "4. Geometry Verification",
+            badge: "VERIFY",
+            content: (
+                <>
+                    <p>
+                        Before exposure, the simulator evaluates whether the
+                        C-arm has reached the intended imaging geometry.
+                    </p>
+
+                    <div style={stepStyle}>
+                        <strong>Pose Match</strong><br />
+                        Confirms that the machine reached the planned final pose.
+                    </div>
+
+                    <div style={stepStyle}>
+                        <strong>Isocenter Error</strong><br />
+                        Measures how closely the selected anatomical target is
+                        aligned with the planned imaging isocenter.
+                    </div>
+
+                    <div style={stepStyle}>
+                        <strong>Central-Ray Error</strong><br />
+                        Evaluates alignment of the simulated X-ray beam with
+                        the requested target geometry.
+                    </div>
+
+                    <div style={calloutStyle}>
+                        A verified geometry result means the simulated pose
+                        satisfies the configured geometric tolerances.
+                    </div>
+                </>
+            )
+        },
+
+        {
+            title: "5. Expose X-Ray",
+            badge: "EXPOSE",
+            content: (
+                <>
+                    <p>
+                        Once the planned pose has been reached, press
+                        <strong> EXPOSE X-RAY</strong>.
+                    </p>
+
+                    <p>
+                        For supported anatomy/projection combinations, the
+                        simulator displays the corresponding validated
+                        reference X-ray from the reference dataset.
+                    </p>
+
+                    <div style={stepStyle}>
+                        <strong>Reference image available</strong><br />
+                        The matching reference projection is displayed in the
+                        X-ray monitor.
+                    </div>
+
+                    <div style={stepStyle}>
+                        <strong>No reference image</strong><br />
+                        Some projections may have valid planned geometry but no
+                        matching image in the current reference dataset. The
+                        simulator will clearly report that no reference image
+                        is available.
+                    </div>
+
+                    <p style={warningStyle}>
+                        A reference X-ray is not a patient-specific diagnostic
+                        image and should not be interpreted as one.
+                    </p>
+                </>
+            )
+        },
+
+        {
+            title: "6. Manual Controls & Navigation",
+            badge: "CONTROL",
+            content: (
+                <>
+                    <p>
+                        The simulator can also be explored manually using the
+                        3D camera and C-arm controls.
+                    </p>
+
+                    <div style={stepStyle}>
+                        <strong>Mouse</strong><br />
+                        Left drag: Rotate view<br />
+                        Right drag: Pan<br />
+                        Scroll: Zoom
+                    </div>
+
+                    <div style={stepStyle}>
+                        <strong>C-Arm Controls</strong><br />
+                        Manual controls can adjust cart position, lift, column
+                        rotation, wig-wag, and orbital motion.
+                    </div>
+
+                    <p>
+                        Manual positioning is useful for testing and debugging,
+                        while the planner workflow should be used when
+                        evaluating planned target positioning.
+                    </p>
+                </>
+            )
+        },
+
+        {
+            title: "7. Overlays & Keyboard Shortcuts",
+            badge: "TOOLS",
+            content: (
+                <>
+                    <p>
+                        Several visualization and debugging tools are available.
+                    </p>
+
+                    <div style={shortcutStyle}>
+                        <kbd>I</kbd>
+                        <span>Open / close these instructions</span>
+                    </div>
+
+                    <div style={shortcutStyle}>
+                        <kbd>P</kbd>
+                        <span>Toggle patient visibility</span>
+                    </div>
+
+                    <div style={shortcutStyle}>
+                        <kbd>L</kbd>
+                        <span>Toggle anatomical landmarks</span>
+                    </div>
+
+                    <div style={shortcutStyle}>
+                        <kbd>D</kbd>
+                        <span>Toggle debug visualization</span>
+                    </div>
+
+                    <div style={shortcutStyle}>
+                        <kbd>C</kbd>
+                        <span>Connect / disconnect supported external hardware</span>
+                    </div>
+
+                    <p>
+                        Debug information can be used to inspect spatial
+                        geometry and simulator state during development.
+                    </p>
+                </>
+            )
+        },
+
+        {
+            title: "8. Gemini Guidance",
+            badge: "AI",
+            content: (
+                <>
+                    <p>
+                        The simulator includes a Gemini guidance assistant for
+                        interacting with the current simulation state.
+                    </p>
+
+                    <p>
+                        You can use it to ask about the selected anatomy,
+                        projection, planned pose, geometry verification, and
+                        the most recent simulated exposure.
+                    </p>
+
+                    <div style={calloutStyle}>
+                        Example: Ask whether the last X-ray was captured at the
+                        verified planned pose and which renderer or reference
+                        source produced it.
+                    </div>
+
+                    <p>
+                        AI-generated explanations are supporting information
+                        for the research simulator and are not clinical advice.
+                    </p>
+                </>
+            )
+        },
+
+        {
+            title: "Ready",
+            badge: "START",
+            content: (
+                <>
+                    <p>
+                        The simulator is ready.
+                    </p>
+
+                    <div style={workflowStyle}>
+                        <span>1</span> Select anatomy & projection
+                    </div>
+
+                    <div style={workflowStyle}>
+                        <span>2</span> Preview the path
+                    </div>
+
+                    <div style={workflowStyle}>
+                        <span>3</span> Review the planned pose
+                    </div>
+
+                    <div style={workflowStyle}>
+                        <span>4</span> Move the C-arm
+                    </div>
+
+                    <div style={workflowStyle}>
+                        <span>5</span> Verify geometry
+                    </div>
+
+                    <div style={workflowStyle}>
+                        <span>6</span> Expose X-ray
+                    </div>
+
+                    <p style={{
+                        marginTop: '24px',
+                        color: '#94a3b8'
+                    }}>
+                        Press <strong>I</strong> at any time to reopen these
+                        instructions.
+                    </p>
+                </>
+            )
         }
     ];
 
     const current = pages[page];
 
-    // Neumorphic unified styles - Dark Theme
-    const bgDark = '#1e2832';
-    const textPrimary = '#e2e8f0';
-    const textSecondary = '#a0aec0';
-
-    // Subtle shadows for dark theme
-    const shadowOuter = '8px 8px 16px rgba(0, 0, 0, 0.4), -8px -8px 16px rgba(255, 255, 255, 0.03)';
-    const shadowInner = 'inset 4px 4px 8px rgba(0, 0, 0, 0.4), inset -4px -4px 8px rgba(255, 255, 255, 0.03)';
-    const shadowActive = 'inset 2px 2px 4px rgba(0, 0, 0, 0.5), inset -2px -2px 4px rgba(255, 255, 255, 0.02)';
-
-    const btnStyle = {
-        padding: '12px 24px',
-        borderRadius: '12px',
-        border: '1px solid rgba(255, 255, 255, 0.02)', // slight border helps pop in dark mode
-        background: bgDark,
-        color: textPrimary,
-        fontWeight: 'bold',
-        fontSize: '15px',
-        cursor: 'pointer',
-        boxShadow: shadowOuter,
-        transition: 'all 0.2s ease-in-out',
-        outline: 'none'
-    };
-
-    const btnDisabledStyle = {
-        ...btnStyle,
-        color: '#4a5568',
-        boxShadow: shadowInner,
-        cursor: 'not-allowed',
-        border: 'none',
-    };
-
-    const btnPrimaryStyle = {
-        ...btnStyle,
-        color: '#4a90e2',
-    };
+    const bg = '#111827';
+    const panel = '#172033';
+    const panel2 = '#0f172a';
+    const border = 'rgba(148, 163, 184, 0.18)';
+    const text = '#e5e7eb';
+    const muted = '#94a3b8';
+    const blue = '#60a5fa';
 
     return (
         <div style={{
             position: 'absolute',
             inset: 0,
+            zIndex: 9999,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 9999,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-            backdropFilter: 'blur(8px)'
+            background: 'rgba(2, 6, 23, 0.82)',
+            backdropFilter: 'blur(10px)',
+            padding: '20px'
         }}>
             <div style={{
-                backgroundColor: bgDark,
-                borderRadius: '24px',
-                padding: '40px',
-                width: '850px', // Wider fixed size
-                maxWidth: '95vw',
-                height: '500px', // Fixed height
-                color: textPrimary,
-                fontFamily: 'sans-serif',
-                boxShadow: shadowOuter,
-                border: '1px solid rgba(255, 255, 255, 0.05)',
+                width: '900px',
+                maxWidth: '96vw',
+                height: '620px',
+                maxHeight: '92vh',
+                background: bg,
+                border: `1px solid ${border}`,
+                borderRadius: '20px',
+                boxShadow: '0 30px 80px rgba(0,0,0,0.55)',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '24px',
-                opacity: 0.9
+                overflow: 'hidden',
+                color: text,
+                fontFamily: 'Inter, system-ui, sans-serif'
             }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h2 style={{ margin: 0, fontSize: '26px', fontWeight: '800', color: '#4a90e2', textShadow: '1px 1px 3px rgba(0,0,0,0.5)' }}>
-                        {current.title}
-                    </h2>
+
+                {/* HEADER */}
+                <div style={{
+                    padding: '24px 28px',
+                    borderBottom: `1px solid ${border}`,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    background: panel2
+                }}>
+                    <div>
+                        <div style={{
+                            color: blue,
+                            fontSize: '11px',
+                            letterSpacing: '2px',
+                            fontWeight: 800,
+                            marginBottom: '7px'
+                        }}>
+                            {current.badge}
+                        </div>
+
+                        <h2 style={{
+                            margin: 0,
+                            fontSize: '25px',
+                            fontWeight: 750
+                        }}>
+                            {current.title}
+                        </h2>
+                    </div>
+
                     <button
                         onClick={onClose}
                         style={{
-                            background: bgDark,
-                            border: '1px solid rgba(255, 255, 255, 0.02)',
-                            color: textSecondary,
+                            width: '38px',
+                            height: '38px',
+                            borderRadius: '10px',
+                            border: `1px solid ${border}`,
+                            background: panel,
+                            color: muted,
                             cursor: 'pointer',
-                            fontSize: '18px',
-                            fontWeight: 'bold',
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '50%',
-                            boxShadow: shadowOuter,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.2s',
+                            fontSize: '18px'
                         }}
-                        onMouseDown={e => e.currentTarget.style.boxShadow = shadowActive}
-                        onMouseUp={e => e.currentTarget.style.boxShadow = shadowOuter}
-                        onMouseLeave={e => e.currentTarget.style.boxShadow = shadowOuter}
                     >
                         ✕
                     </button>
                 </div>
 
-                {/* Main Content Area - Side by Side Flex */}
-                <div style={{ display: 'flex', flex: 1, gap: '24px', minHeight: '0' }}>
-
-                    {/* Left: Text Content */}
-                    <div style={{
-                        flex: '1',
-                        fontSize: '17px',
-                        lineHeight: '1.8',
-                        whiteSpace: 'pre-line',
-                        color: '#e2e8f0',
-                        padding: '24px',
-                        borderRadius: '16px',
-                        backgroundColor: bgDark,
-                        border: '1px solid rgba(255, 255, 255, 0.02)',
-                        boxShadow: shadowInner,
-                        fontWeight: '500',
-                        overflowY: 'auto'
-                    }}>
-                        {current.content}
-                    </div>
-
-                    {/* Right: Image Content (if exists) */}
-                    {(current.image || current.images) && (
-                        <div style={{
-                            flex: '1.2', // Image gets slightly more space
-                            borderRadius: '16px',
-                            overflow: 'hidden',
-                            backgroundColor: bgDark,
-                            border: '1px solid rgba(255, 255, 255, 0.05)',
-                            boxShadow: shadowInner,
-                            display: 'flex',
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '16px',
-                            gap: '12px'
-                        }}>
-                            {current.image && (
-                                <img
-                                    src={current.image}
-                                    alt={current.title}
-                                    style={{
-                                        maxWidth: '100%',
-                                        maxHeight: '100%',
-                                        objectFit: 'contain',
-                                        borderRadius: '8px'
-                                    }}
-                                />
-                            )}
-                            {current.images && current.images.map((img, idx) => (
-                                <img
-                                    key={idx}
-                                    src={img}
-                                    alt={`${current.title} ${idx + 1}`}
-                                    style={{
-                                        width: `${Math.floor(100 / current.images.length)}%`,
-                                        height: '100%',
-                                        objectFit: 'contain',
-                                        borderRadius: '8px'
-                                    }}
-                                />
-                            ))}
-                        </div>
-                    )}
+                {/* BODY */}
+                <div style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    padding: '30px 34px',
+                    fontSize: '16px',
+                    lineHeight: 1.7
+                }}>
+                    {current.content}
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
-                    {/* Pagination Dots */}
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                        {pages.map((_, i) => (
-                            <div key={i} style={{
-                                width: '12px',
-                                height: '12px',
-                                borderRadius: '50%',
-                                backgroundColor: bgDark,
-                                boxShadow: i === page ? shadowInner : shadowOuter,
-                                border: i === page ? '2px solid #4a90e2' : '1px solid rgba(255,255,255,0.02)'
-                            }} />
+                {/* FOOTER */}
+                <div style={{
+                    padding: '18px 28px',
+                    borderTop: `1px solid ${border}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: panel2
+                }}>
+
+                    <div style={{
+                        display: 'flex',
+                        gap: '7px'
+                    }}>
+                        {pages.map((_, index) => (
+                            <div
+                                key={index}
+                                style={{
+                                    width: index === page ? '24px' : '7px',
+                                    height: '7px',
+                                    borderRadius: '10px',
+                                    background:
+                                        index === page
+                                            ? blue
+                                            : '#334155',
+                                    transition: '0.2s'
+                                }}
+                            />
                         ))}
                     </div>
 
-                    <div style={{ display: 'flex', gap: '16px' }}>
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px'
+                    }}>
+                        <span style={{
+                            color: muted,
+                            fontSize: '13px',
+                            marginRight: '8px'
+                        }}>
+                            {page + 1} / {pages.length}
+                        </span>
+
                         <button
                             disabled={page === 0}
-                            onClick={() => setPage(p => Math.max(0, p - 1))}
-                            style={page === 0 ? btnDisabledStyle : btnStyle}
-                            onMouseDown={e => { if (page !== 0) e.currentTarget.style.boxShadow = shadowActive; }}
-                            onMouseUp={e => { if (page !== 0) e.currentTarget.style.boxShadow = shadowOuter; }}
-                            onMouseLeave={e => { if (page !== 0) e.currentTarget.style.boxShadow = shadowOuter; }}
+                            onClick={() =>
+                                setPage(p => Math.max(0, p - 1))
+                            }
+                            style={{
+                                ...buttonStyle,
+                                opacity: page === 0 ? 0.35 : 1,
+                                cursor:
+                                    page === 0
+                                        ? 'not-allowed'
+                                        : 'pointer'
+                            }}
                         >
                             Back
                         </button>
 
                         {page < pages.length - 1 ? (
                             <button
-                                onClick={() => setPage(p => Math.min(pages.length - 1, p + 1))}
-                                style={btnPrimaryStyle}
-                                onMouseDown={e => e.currentTarget.style.boxShadow = shadowActive}
-                                onMouseUp={e => e.currentTarget.style.boxShadow = shadowOuter}
-                                onMouseLeave={e => e.currentTarget.style.boxShadow = shadowOuter}
+                                onClick={() =>
+                                    setPage(p =>
+                                        Math.min(
+                                            pages.length - 1,
+                                            p + 1
+                                        )
+                                    )
+                                }
+                                style={{
+                                    ...buttonStyle,
+                                    background: '#2563eb',
+                                    borderColor: '#3b82f6'
+                                }}
                             >
-                                Next
+                                Next →
                             </button>
                         ) : (
                             <button
                                 onClick={onClose}
-                                style={{ ...btnStyle, color: '#38a169' }}
-                                onMouseDown={e => e.currentTarget.style.boxShadow = shadowActive}
-                                onMouseUp={e => e.currentTarget.style.boxShadow = shadowOuter}
-                                onMouseLeave={e => e.currentTarget.style.boxShadow = shadowOuter}
+                                style={{
+                                    ...buttonStyle,
+                                    background: '#166534',
+                                    borderColor: '#22c55e'
+                                }}
                             >
-                                Finish
+                                Start Simulator
                             </button>
                         )}
                     </div>
                 </div>
             </div>
-        </div >
+        </div>
     );
+};
+
+const buttonStyle = {
+    padding: '10px 18px',
+    borderRadius: '9px',
+    border: '1px solid rgba(148,163,184,0.25)',
+    background: '#1e293b',
+    color: '#f1f5f9',
+    fontWeight: 700,
+    fontSize: '14px',
+    cursor: 'pointer'
+};
+
+const stepStyle = {
+    background: '#172033',
+    border: '1px solid rgba(148,163,184,0.15)',
+    borderRadius: '10px',
+    padding: '14px 16px',
+    margin: '12px 0'
+};
+
+const calloutStyle = {
+    background: 'rgba(37,99,235,0.12)',
+    border: '1px solid rgba(96,165,250,0.35)',
+    borderRadius: '10px',
+    padding: '15px 17px',
+    margin: '16px 0',
+    color: '#dbeafe'
+};
+
+const warningStyle = {
+    background: 'rgba(245,158,11,0.08)',
+    border: '1px solid rgba(245,158,11,0.3)',
+    color: '#fcd34d',
+    borderRadius: '10px',
+    padding: '14px 16px'
+};
+
+const shortcutStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '14px',
+    margin: '11px 0'
+};
+
+const workflowStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '14px',
+    padding: '11px 0',
+    borderBottom: '1px solid rgba(148,163,184,0.12)'
 };
 
 export default Instructions;
