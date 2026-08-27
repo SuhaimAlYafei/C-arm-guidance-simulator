@@ -40,7 +40,6 @@ const state = {
 
 let installed = false;
 let originalRender = null;
-let liveTimer = null;
 let pointerDom = null;
 let selectionHelper = null;
 let selectedRoot = null;
@@ -226,7 +225,6 @@ const onPointerDown = event => {
     pointerId: event.pointerId,
     root,
     info,
-    startPosition: root.position.clone(),
     offsetX: root.position.x - localHit.x,
     offsetZ: root.position.z - localHit.z,
     moved: false,
@@ -520,7 +518,7 @@ export const installOperatingRoomInteraction = () => {
   installKeyboard();
   installMoveGuard();
   installPlannerSync();
-  liveTimer = window.setInterval(liveCollisionCheck, LIVE_CHECK_INTERVAL_MS);
+  window.setInterval(liveCollisionCheck, LIVE_CHECK_INTERVAL_MS);
 };
 
 installOperatingRoomInteraction();
