@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import App from './App.jsx';
 import GeminiAssistant from './components/GeminiAssistant.jsx';
+import OperatingRoomSafetyPanel from './components/OperatingRoomSafetyPanel.js';
+import UltimateResearchPanel from './components/UltimateResearchPanel.js';
 
 const parseNumber = (value) => {
   const parsed = Number(value);
@@ -117,6 +119,8 @@ export default function SimulatorShell() {
   return (
     <>
       <App />
+      <OperatingRoomSafetyPanel />
+      <UltimateResearchPanel />
       <GeminiAssistant simulatorContext={simulatorContext} />
     </>
   );
