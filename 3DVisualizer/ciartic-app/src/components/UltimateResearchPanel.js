@@ -41,6 +41,19 @@ const buttonStyle = {
   background: '#334155',
 };
 
+const dockButtonStyle = {
+  ...buttonStyle,
+  position: 'fixed',
+  left: '126px',
+  bottom: '18px',
+  zIndex: 1200,
+  padding: '10px 13px',
+  background: 'rgba(49,46,129,0.96)',
+  border: '1px solid rgba(129,140,248,0.7)',
+  boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+  backdropFilter: 'blur(10px)',
+};
+
 const stat = (label, value, valueColor = '#e2e8f0') => h(
   'div',
   { style: { display: 'flex', justifyContent: 'space-between', gap: '10px', fontSize: '8px', marginTop: '3px' } },
@@ -65,7 +78,7 @@ const slider = ({ label, value, min, max, step, onChange, suffix = '' }) => h(
 );
 
 export default function UltimateResearchPanel() {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [motion, setMotion] = useState(getPatientMotionSnapshot);
   const [radiation, setRadiation] = useState(getRadiationSnapshot);
   const [log, setLog] = useState(getResearchLog);
@@ -88,10 +101,8 @@ export default function UltimateResearchPanel() {
       {
         type: 'button',
         onClick: () => setOpen(true),
-        style: {
-          position: 'absolute', right: '18px', top: '92px', zIndex: 940,
-          ...buttonStyle, background: '#312e81', padding: '9px 12px',
-        },
+        style: dockButtonStyle,
+        title: 'Open dynamic patient, metal/FOV, scatter and evidence tools',
       },
       'RESEARCH LAB',
     );
@@ -101,24 +112,37 @@ export default function UltimateResearchPanel() {
     'div',
     {
       style: {
-        position: 'absolute', right: '18px', top: '92px', width: '270px', maxHeight: 'calc(100vh - 120px)',
-        overflowY: 'auto', zIndex: 940, padding: '10px', boxSizing: 'border-box',
-        border: '1px solid rgba(129,140,248,0.35)', borderRadius: '10px',
-        background: 'rgba(15,23,42,0.94)', color: '#fff', boxShadow: '0 10px 32px rgba(0,0,0,0.32)',
-        fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif", backdropFilter: 'blur(9px)',
+        position: 'fixed',
+        right: '320px',
+        bottom: '72px',
+        top: 'auto',
+        width: '300px',
+        maxWidth: 'calc(100vw - 36px)',
+        maxHeight: 'calc(100vh - 110px)',
+        overflowY: 'auto',
+        zIndex: 1200,
+        padding: '12px',
+        boxSizing: 'border-box',
+        border: '1px solid rgba(129,140,248,0.55)',
+        borderRadius: '12px',
+        background: 'rgba(15,23,42,0.96)',
+        color: '#fff',
+        boxShadow: '0 18px 50px rgba(0,0,0,0.48)',
+        fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+        backdropFilter: 'blur(12px)',
       },
     },
     h(
       'div',
-      { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+      { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: '-12px', padding: '8px 0', background: 'rgba(15,23,42,0.98)', zIndex: 2 } },
       h('div', null,
         h('div', { style: { fontSize: '11px', fontWeight: 950, letterSpacing: '0.5px' } }, 'RESEARCH LAB'),
         h('div', { style: { fontSize: '7px', color: '#94a3b8', marginTop: '2px' } }, 'Adaptive digital twin · evidence capture'),
       ),
-      h('button', { type: 'button', onClick: () => setOpen(false), style: { ...buttonStyle, padding: '4px 7px' } }, '×'),
+      h('button', { type: 'button', onClick: () => setOpen(false), style: { ...buttonStyle, padding: '5px 8px' } }, '×'),
     ),
 
-    h('div', { style: { marginTop: '9px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.10)' } },
+    h('div', { style: { marginTop: '6px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.10)' } },
       h('div', { style: { fontSize: '9px', fontWeight: 900, color: '#7dd3fc' } }, '1 · DYNAMIC PATIENT + REPLANNING'),
       stat('Respiratory displacement', `${(motion.displacementM * 1000).toFixed(1)} mm`),
       stat('Adaptive status', motion.adaptiveStatus, motionColor),
