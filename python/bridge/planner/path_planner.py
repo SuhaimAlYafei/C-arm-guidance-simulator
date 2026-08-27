@@ -63,6 +63,10 @@ def create_path(
 
     The path is kinematically smooth but collision checking and measured
     hardware feedback must still be applied before physical execution.
+
+    The first and last waypoints are assigned from the exact requested poses
+    rather than reconstructed by floating-point interpolation. This prevents
+    tiny endpoint drift from accumulating into encoder/verification residuals.
     """
     if waypoint_count < 2:
         raise ValueError("waypoint_count must be at least 2.")
@@ -71,18 +75,21 @@ def create_path(
 
     for index in range(waypoint_count):
         progress = index / (waypoint_count - 1)
-        pose = interpolate_pose(current_pose, final_pose, progress)
 
         if index == 0:
+            pose = current_pose
             phase = "start"
         elif index == waypoint_count - 1:
+            pose = final_pose
             phase = "final_alignment"
-        elif progress < 0.30:
-            phase = "departure"
-        elif progress < 0.75:
-            phase = "coordinated_motion"
         else:
-            phase = "fine_alignment"
+            pose = interpolate_pose(current_pose, final_pose, progress)
+            if progress < 0.30:
+                phase = "departure"
+            elif progress < 0.75:
+                phase = "coordinated_motion"
+            else:
+                phase = "fine_alignment"
 
         waypoints.append(
             PathWaypoint(
