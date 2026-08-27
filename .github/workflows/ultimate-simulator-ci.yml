@@ -1,0 +1,57 @@
+name: Ultimate Simulator CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature/or-environment-collision-bubbles
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  frontend:
+    name: Frontend build + research tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 3DVisualizer/ciartic-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: 3DVisualizer/ciartic-app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Research unit tests
+        run: npm run test:research
+
+      - name: Production build
+        run: npm run build
+
+  planner:
+    name: Planner regression tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Planner tests
+        env:
+          PYTHONPATH: python
+        run: python -m unittest bridge.planner.test_path_planner -v
+
+      - name: Compile planner modules
+        run: python -m py_compile python/bridge/planner/path_planner.py python/bridge/planner/pose_solver.py python/bridge/api.py
