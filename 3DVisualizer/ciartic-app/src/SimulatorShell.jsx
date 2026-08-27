@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import App from './App.jsx';
 import GeminiAssistant from './components/GeminiAssistant.jsx';
-import OperatingRoomSafetyPanel from './components/OperatingRoomSafetyPanel.js';
-import UltimateResearchPanel from './components/UltimateResearchPanel.js';
+import ResearchControlDock from './components/ResearchControlDock.jsx';
 
 const parseNumber = (value) => {
   const parsed = Number(value);
@@ -33,7 +32,7 @@ const readSimulatorContext = () => {
   const anatomyLabel = requestMatch?.[1]?.trim() || null;
 
   return {
-    mode: 'C-Arm Guidance Simulator V2',
+    mode: 'C-Arm Guidance Simulator V3',
     researchOnly: true,
     selection: {
       anatomyLabel,
@@ -41,25 +40,15 @@ const readSimulatorContext = () => {
       projectionLabel,
       bodyRegion: regionMatch?.[1]?.trim() || null,
     },
-    beam: {
-      active: exposing,
-    },
-    exposure: {
-      status: exposing ? 'EXPOSING' : arrived ? 'READY' : null,
-    },
+    beam: { active: exposing },
+    exposure: { status: exposing ? 'EXPOSING' : arrived ? 'READY' : null },
     planner: {
       status: statusMatch?.[1]?.trim() || null,
       view: projectionLabel,
       target: targetMatch
-        ? {
-            x_mm: parseNumber(targetMatch[1]),
-            y_mm: parseNumber(targetMatch[2]),
-            z_mm: parseNumber(targetMatch[3]),
-          }
+        ? { x_mm: parseNumber(targetMatch[1]), y_mm: parseNumber(targetMatch[2]), z_mm: parseNumber(targetMatch[3]) }
         : null,
-      confidence: confidenceMatch
-        ? { percentage: parseNumber(confidenceMatch[1]) }
-        : null,
+      confidence: confidenceMatch ? { percentage: parseNumber(confidenceMatch[1]) } : null,
       geometryVerification: geometryVerified
         ? {
             verified: true,
@@ -82,11 +71,7 @@ const readSimulatorContext = () => {
       isPathAnimating: /MOVING|ANIMATING/i.test(text),
     },
     target: targetMatch
-      ? {
-          x_mm: parseNumber(targetMatch[1]),
-          y_mm: parseNumber(targetMatch[2]),
-          z_mm: parseNumber(targetMatch[3]),
-        }
+      ? { x_mm: parseNumber(targetMatch[1]), y_mm: parseNumber(targetMatch[2]), z_mm: parseNumber(targetMatch[3]) }
       : null,
     geometry: {
       verification: geometryVerified
@@ -103,24 +88,21 @@ const readSimulatorContext = () => {
 
 export default function SimulatorShell() {
   const [simulatorContext, setSimulatorContext] = useState(() => ({
-    mode: 'C-Arm Guidance Simulator V2',
+    mode: 'C-Arm Guidance Simulator V3',
     researchOnly: true,
   }));
 
   useEffect(() => {
     const refresh = () => setSimulatorContext(readSimulatorContext());
-
     refresh();
     const timer = window.setInterval(refresh, 750);
-
     return () => window.clearInterval(timer);
   }, []);
 
   return (
     <>
       <App />
-      <OperatingRoomSafetyPanel />
-      <UltimateResearchPanel />
+      <ResearchControlDock />
       <GeminiAssistant simulatorContext={simulatorContext} />
     </>
   );
