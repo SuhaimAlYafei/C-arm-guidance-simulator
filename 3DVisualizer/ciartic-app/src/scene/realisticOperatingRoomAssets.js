@@ -4,12 +4,14 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 const EQUIPMENT_GROUP_NAME = 'operating_room_equipment_layer';
 
-// Keep the IV pole immediate because it is central to the collision experiment.
-// Staff assets are much heavier, so load them sequentially after first render.
+// Keep all three realistic assets enabled immediately. The previous delayed
+// hydration left the old procedural staff visible long enough to look like a
+// regression. Performance is handled by sequential loading, disabled staff
+// shadows, frustum culling, and a bounded startup discovery loop instead.
 const ASSETS = [
-  { rootName: 'or_iv_pole', id: 'iv-pole', url: '/operating_room/iv_pole.glb', targetHeightM: 1.9, clearanceM: 0.13, delayMs: 0, shadows: true },
-  { rootName: 'or_scrub_nurse', id: 'scrub-nurse', url: '/operating_room/scrub_nurse.glb', targetHeightM: 1.68, clearanceM: 0.16, delayMs: 450, shadows: false },
-  { rootName: 'or_surgeon', id: 'surgeon', url: '/operating_room/surgeon.glb', targetHeightM: 1.72, clearanceM: 0.16, delayMs: 1100, shadows: false },
+  { rootName: 'or_iv_pole', id: 'iv-pole', url: '/operating_room/iv_pole.glb', targetHeightM: 1.9, clearanceM: 0.13, shadows: true },
+  { rootName: 'or_scrub_nurse', id: 'scrub-nurse', url: '/operating_room/scrub_nurse.glb', targetHeightM: 1.68, clearanceM: 0.16, shadows: false },
+  { rootName: 'or_surgeon', id: 'surgeon', url: '/operating_room/surgeon.glb', targetHeightM: 1.72, clearanceM: 0.16, shadows: false },
 ];
 
 const loader = new GLTFLoader();
@@ -19,6 +21,8 @@ const loadingRoots = new WeakSet();
 const hydratedRoots = new WeakSet();
 const scheduledRoots = new WeakSet();
 const capturedEquipmentGroups = new Set();
+const hydrationQueue = [];
+let queueRunning = false;
 let installed = false;
 let startupTimer = null;
 let originalAdd = null;
@@ -76,6 +80,7 @@ const refreshSafetyEnvelope = (root, config) => {
     bubble.geometry?.dispose?.();
     bubble.geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
     bubble.position.copy(center);
+    bubble.scale.set(1, 1, 1);
     bubble.rotation.set(0, 0, 0);
     bubble.updateMatrixWorld(true);
   }
@@ -87,6 +92,7 @@ const refreshSafetyEnvelope = (root, config) => {
     edges.geometry = new THREE.EdgesGeometry(boxGeometry);
     boxGeometry.dispose();
     edges.position.copy(center);
+    edges.scale.set(1, 1, 1);
     edges.rotation.set(0, 0, 0);
     edges.updateMatrixWorld(true);
   }
@@ -95,6 +101,11 @@ const refreshSafetyEnvelope = (root, config) => {
 const replaceProceduralChildren = async (root, config) => {
   if (!root || loadingRoots.has(root) || hydratedRoots.has(root) || root.userData.realisticAssetLoaded) return;
   loadingRoots.add(root);
+
+  // Hide the low-detail procedural placeholder while the real GLB is loading.
+  // If loading fails we restore it, so the scene never loses the object entirely.
+  const previousVisible = root.visible;
+  root.visible = false;
 
   try {
     console.info(`[OR assets] Loading ${config.url} into ${config.rootName}`, root.uuid);
@@ -110,35 +121,41 @@ const replaceProceduralChildren = async (root, config) => {
     root.add(model);
     root.userData.realisticAssetLoaded = true;
     root.userData.realisticAssetUrl = config.url;
+    root.visible = previousVisible;
     root.updateMatrixWorld(true);
 
     refreshSafetyEnvelope(root, config);
     hydratedRoots.add(root);
     console.info(`[OR assets] READY ${config.rootName}`, root.uuid);
   } catch (error) {
+    root.visible = previousVisible;
     console.error(`[OR assets] FAILED ${config.rootName}`, error);
   } finally {
     loadingRoots.delete(root);
   }
 };
 
+const runHydrationQueue = async () => {
+  if (queueRunning) return;
+  queueRunning = true;
+  try {
+    while (hydrationQueue.length) {
+      const { root, config } = hydrationQueue.shift();
+      if (!root?.parent || root.userData.realisticAssetLoaded) continue;
+      await replaceProceduralChildren(root, config);
+      // Yield one frame between heavy GLB replacements so the UI remains responsive.
+      await new Promise(resolve => requestAnimationFrame(() => resolve()));
+    }
+  } finally {
+    queueRunning = false;
+  }
+};
+
 const scheduleHydration = (root, config) => {
   if (!root || root.userData.realisticAssetLoaded || scheduledRoots.has(root)) return;
   scheduledRoots.add(root);
-
-  const run = () => replaceProceduralChildren(root, config);
-  if (config.delayMs <= 0) {
-    queueMicrotask(run);
-    return;
-  }
-
-  window.setTimeout(() => {
-    if ('requestIdleCallback' in window) {
-      window.requestIdleCallback(run, { timeout: 1600 });
-    } else {
-      run();
-    }
-  }, config.delayMs);
+  hydrationQueue.push({ root, config });
+  queueMicrotask(runHydrationQueue);
 };
 
 const hydrateGroup = equipmentGroup => {
@@ -174,7 +191,7 @@ const allKnownRootsScheduled = () => {
 export const installRealisticOperatingRoomAssets = () => {
   if (installed || typeof window === 'undefined') return;
   installed = true;
-  console.info('[OR assets] optimized installer active');
+  console.info('[OR assets] realistic sequential installer active');
 
   originalAdd = THREE.Object3D.prototype.add;
   THREE.Object3D.prototype.add = function realisticOrCaptureAdd(...objects) {
@@ -187,7 +204,7 @@ export const installRealisticOperatingRoomAssets = () => {
     return result;
   };
 
-  // Bounded startup discovery instead of a permanent 500 ms polling loop.
+  // Bounded startup discovery only. No permanent polling loop.
   let attempts = 0;
   startupTimer = window.setInterval(() => {
     attempts += 1;
@@ -197,7 +214,7 @@ export const installRealisticOperatingRoomAssets = () => {
       window.clearInterval(startupTimer);
       startupTimer = null;
     }
-  }, 300);
+  }, 250);
 
   window.addEventListener('beforeunload', () => {
     if (startupTimer) window.clearInterval(startupTimer);
