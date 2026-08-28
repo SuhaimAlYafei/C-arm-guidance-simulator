@@ -5,9 +5,9 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 const EQUIPMENT_GROUP_NAME = 'operating_room_equipment_layer';
 
 const ASSETS = [
-  { rootName: 'or_iv_pole', url: '/operating_room/iv_pole.glb', targetHeightM: 1.9 },
-  { rootName: 'or_surgeon', url: '/operating_room/surgeon.glb', targetHeightM: 1.72 },
-  { rootName: 'or_scrub_nurse', url: '/operating_room/scrub_nurse.glb', targetHeightM: 1.68 },
+  { rootName: 'or_iv_pole', id: 'iv-pole', url: '/operating_room/iv_pole.glb', targetHeightM: 1.9, clearanceM: 0.13 },
+  { rootName: 'or_surgeon', id: 'surgeon', url: '/operating_room/surgeon.glb', targetHeightM: 1.72, clearanceM: 0.16 },
+  { rootName: 'or_scrub_nurse', id: 'scrub-nurse', url: '/operating_room/scrub_nurse.glb', targetHeightM: 1.68, clearanceM: 0.16 },
 ];
 
 const loader = new GLTFLoader();
@@ -56,6 +56,37 @@ const prepareModel = (model, targetHeightM) => {
   return model;
 };
 
+const refreshSafetyEnvelope = (root, config) => {
+  const scene = root?.parent?.parent;
+  const safetyGroup = scene?.getObjectByName?.('operating_room_safety_bubbles');
+  if (!safetyGroup) return;
+
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root).expandByScalar(config.clearanceM);
+  const center = new THREE.Vector3();
+  const size = new THREE.Vector3();
+  box.getCenter(center);
+  box.getSize(size);
+
+  const bubble = safetyGroup.getObjectByName(`safety_${config.id}`);
+  if (bubble?.isMesh) {
+    bubble.geometry?.dispose?.();
+    bubble.geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+    bubble.position.copy(center);
+    bubble.rotation.set(0, 0, 0);
+    bubble.updateMatrixWorld(true);
+  }
+
+  const edges = safetyGroup.getObjectByName(`safety_edges_${config.id}`);
+  if (edges?.isLineSegments) {
+    edges.geometry?.dispose?.();
+    edges.geometry = new THREE.EdgesGeometry(new THREE.BoxGeometry(size.x, size.y, size.z));
+    edges.position.copy(center);
+    edges.rotation.set(0, 0, 0);
+    edges.updateMatrixWorld(true);
+  }
+};
+
 const replaceProceduralChildren = async (root, config) => {
   if (!root || loadingRoots.has(root) || hydratedRoots.has(root) || root.userData.realisticAssetLoaded) return;
   loadingRoots.add(root);
@@ -76,6 +107,7 @@ const replaceProceduralChildren = async (root, config) => {
     root.userData.realisticAssetUrl = config.url;
     root.updateMatrixWorld(true);
 
+    refreshSafetyEnvelope(root, config);
     hydratedRoots.add(root);
     console.info(`[OR assets] READY ${config.rootName}`, root.uuid);
   } catch (error) {
@@ -87,6 +119,7 @@ const hydrateGroup = equipmentGroup => {
   if (!equipmentGroup?.isGroup) return;
   capturedEquipmentGroups.add(equipmentGroup);
   window.__carmOperatingRoomEquipment = equipmentGroup;
+  window.__carmOperatingRoomEquipmentGroups = capturedEquipmentGroups;
 
   ASSETS.forEach(config => {
     const root = equipmentGroup.getObjectByName(config.rootName);
@@ -114,6 +147,7 @@ export const installRealisticOperatingRoomAssets = () => {
     if (this?.name === EQUIPMENT_GROUP_NAME) {
       capturedEquipmentGroups.add(this);
       window.__carmOperatingRoomEquipment = this;
+      window.__carmOperatingRoomEquipmentGroups = capturedEquipmentGroups;
       queueMicrotask(() => hydrateGroup(this));
     }
 
@@ -121,15 +155,13 @@ export const installRealisticOperatingRoomAssets = () => {
       if (object?.name === EQUIPMENT_GROUP_NAME) {
         capturedEquipmentGroups.add(object);
         window.__carmOperatingRoomEquipment = object;
+        window.__carmOperatingRoomEquipmentGroups = capturedEquipmentGroups;
         queueMicrotask(() => hydrateGroup(object));
       }
     }
     return result;
   };
 
-  // Do not stop after the first three successful loads. In development,
-  // React StrictMode / scene recreation can create a second live OR layer.
-  // Each root object must be hydrated independently.
   timer = window.setInterval(hydrateAll, 500);
 
   window.addEventListener('beforeunload', () => {
