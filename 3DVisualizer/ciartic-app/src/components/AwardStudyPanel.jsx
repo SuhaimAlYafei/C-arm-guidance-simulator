@@ -8,6 +8,11 @@ import {
   getAwardStudySnapshot,
   subscribeAwardStudy,
 } from '../scene/awardStudyProtocol.js';
+import {
+  applyAwardScenarioPreset,
+  getAwardScenarioSnapshot,
+  subscribeAwardScenario,
+} from '../scene/awardScenarioPresets.js';
 
 const button = {
   border: '1px solid rgba(255,255,255,.16)',
@@ -34,19 +39,33 @@ const num = (value, digits = 2) => Number.isFinite(value) ? value.toFixed(digits
 export default function AwardStudyPanel({ simulatorContext = {} }) {
   const [open, setOpen] = useState(false);
   const [study, setStudy] = useState(getAwardStudySnapshot);
-  const [scenario, setScenario] = useState('Default OR layout');
+  const [scenarioState, setScenarioState] = useState(getAwardScenarioSnapshot);
+  const [scenarioKey, setScenarioKey] = useState('nominal');
   const [notes, setNotes] = useState('');
   const [lastCapturedId, setLastCapturedId] = useState(null);
 
   useEffect(() => subscribeAwardStudy(setStudy), []);
+  useEffect(() => subscribeAwardScenario(setScenarioState), []);
 
   const summary = study.summary || {};
   const recent = useMemo(() => (study.trials || []).slice(-5).reverse(), [study.trials]);
   const geometryReady = simulatorContext?.planner?.geometryVerification?.verified === true;
   const plannerStatus = simulatorContext?.planner?.status || '—';
+  const scenarioMeta = scenarioState.presets?.[scenarioKey] || { label: scenarioKey, description: '' };
+
+  const applyScenario = () => {
+    applyAwardScenarioPreset(scenarioKey);
+  };
 
   const capture = () => {
-    const trial = captureAwardStudyTrial({ simulatorContext, scenario, notes });
+    const trial = captureAwardStudyTrial({
+      simulatorContext,
+      scenario: scenarioMeta.label || scenarioKey,
+      notes: [
+        `preset=${scenarioState.preset}; preset_revision=${scenarioState.revision}`,
+        notes,
+      ].filter(Boolean).join(' | '),
+    });
     setLastCapturedId(trial?.trial_id || null);
     setNotes('');
   };
@@ -74,7 +93,7 @@ export default function AwardStudyPanel({ simulatorContext = {} }) {
 
   return (
     <div style={{
-      position:'fixed', left:12, bottom:58, width:370, maxWidth:'calc(100vw - 24px)', maxHeight:'78vh',
+      position:'fixed', left:12, bottom:58, width:382, maxWidth:'calc(100vw - 24px)', maxHeight:'80vh',
       overflowY:'auto', zIndex:20002, padding:13, boxSizing:'border-box', borderRadius:13,
       border:'1px solid rgba(167,139,250,.55)', background:'rgba(10,15,30,.985)', color:'#fff',
       boxShadow:'0 18px 55px rgba(0,0,0,.52)', backdropFilter:'blur(14px)', fontFamily:'Inter,system-ui,sans-serif',
@@ -90,31 +109,34 @@ export default function AwardStudyPanel({ simulatorContext = {} }) {
       <div style={{ marginTop:10, padding:9, borderRadius:9, background:'rgba(30,41,59,.75)', border:'1px solid rgba(255,255,255,.08)' }}>
         <Stat label="Current planner" value={plannerStatus} color={String(plannerStatus).includes('BLOCK') ? '#f87171' : '#93c5fd'} />
         <Stat label="Geometry verification" value={geometryReady ? 'VERIFIED' : 'NOT VERIFIED'} color={geometryReady ? '#4ade80' : '#fbbf24'} />
+        <Stat label="Scenario system" value={scenarioState.ready ? 'READY' : 'WAITING'} color={scenarioState.ready ? '#4ade80' : '#fbbf24'} />
         <Stat label="Trials captured" value={String(summary.trials || 0)} />
       </div>
 
-      <label style={{ display:'block', marginTop:11, fontSize:9, color:'#cbd5e1' }}>
-        Scenario label
-        <select value={scenario} onChange={e => setScenario(e.target.value)} style={{ width:'100%', marginTop:5, padding:'8px 9px', borderRadius:8, border:'1px solid #475569', background:'#111827', color:'#fff', fontSize:10 }}>
-          <option>Default OR layout</option>
-          <option>IV pole challenge</option>
-          <option>Crowded OR challenge</option>
-          <option>Patient-motion challenge</option>
-          <option>Metal-in-FOV challenge</option>
-          <option>Custom controlled scenario</option>
+      <div style={{ marginTop:11, padding:9, borderRadius:9, border:'1px solid rgba(96,165,250,.28)', background:'rgba(30,58,138,.12)' }}>
+        <div style={{ fontSize:10, fontWeight:900, color:'#93c5fd' }}>CONTROLLED OR SCENARIO</div>
+        <select value={scenarioKey} onChange={e => setScenarioKey(e.target.value)} style={{ width:'100%', marginTop:7, padding:'8px 9px', borderRadius:8, border:'1px solid #475569', background:'#111827', color:'#fff', fontSize:10 }}>
+          {Object.entries(scenarioState.presets || {}).map(([key, value]) => (
+            <option key={key} value={key}>{value.label}</option>
+          ))}
         </select>
-      </label>
+        <div style={{ marginTop:5, color:'#94a3b8', fontSize:8.5, lineHeight:1.4 }}>{scenarioMeta.description}</div>
+        <button disabled={!scenarioState.ready} onClick={applyScenario} style={{ ...button, width:'100%', marginTop:7, background:'#1d4ed8', opacity:scenarioState.ready ? 1 : .45 }}>
+          APPLY REPRODUCIBLE PRESET
+        </button>
+        <div style={{ marginTop:5, color:'#fbbf24', fontSize:8.2, lineHeight:1.35 }}>{scenarioState.message}</div>
+      </div>
 
       <label style={{ display:'block', marginTop:9, fontSize:9, color:'#cbd5e1' }}>
         Trial note (optional)
-        <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. IV pole moved 20 cm toward table" style={{ width:'100%', boxSizing:'border-box', marginTop:5, padding:'8px 9px', borderRadius:8, border:'1px solid #475569', background:'#111827', color:'#fff', fontSize:10 }} />
+        <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. repeat 3, neck AP, same starting pose" style={{ width:'100%', boxSizing:'border-box', marginTop:5, padding:'8px 9px', borderRadius:8, border:'1px solid #475569', background:'#111827', color:'#fff', fontSize:10 }} />
       </label>
 
       <button onClick={capture} style={{ ...button, width:'100%', marginTop:10, background:'linear-gradient(135deg,#166534,#15803d)', borderColor:'#4ade80' }}>
         CAPTURE PAIRED TRIAL
       </button>
       <div style={{ marginTop:5, color:'#94a3b8', fontSize:8.5, lineHeight:1.4 }}>
-        Capture after PREVIEW PATH. The trial records direct-route conflict, collision-aware outcome, sampled clearance, geometry verification, motion state, and research-only radiation proxies.
+        Apply a preset, run PREVIEW PATH, then capture. Each trial records direct-route conflict, collision-aware outcome, sampled clearance, geometry verification, motion state, and research-only radiation proxies.
       </div>
       {lastCapturedId && <div style={{ marginTop:6, color:'#86efac', fontSize:8 }}>Saved: {lastCapturedId}</div>}
 
