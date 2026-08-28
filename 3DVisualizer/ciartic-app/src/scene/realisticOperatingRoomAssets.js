@@ -84,52 +84,43 @@ const replaceProceduralChildren = async (root, config) => {
   }
 };
 
-const findEquipmentGroups = () => {
-  const groups = [];
-  const scenes = [];
-
-  // The OR runtime owns the group but not a public scene reference, so inspect
-  // the live Three.js objects reachable through renderers captured by the app.
-  if (window.__carmMainScene?.isScene) scenes.push(window.__carmMainScene);
-
-  // Fallback: the runtime's scene hook creates this named group. Object3D.add
-  // below captures it immediately, independent of renderer monkey-patch order.
-  if (window.__carmOperatingRoomEquipment?.isGroup) groups.push(window.__carmOperatingRoomEquipment);
-
-  scenes.forEach(scene => {
-    const group = scene.getObjectByName(EQUIPMENT_GROUP_NAME);
-    if (group) groups.push(group);
-  });
-  return [...new Set(groups)];
-};
-
-const hydrate = () => {
-  findEquipmentGroups().forEach(equipmentGroup => {
-    ASSETS.forEach(config => {
-      const root = equipmentGroup.getObjectByName(config.rootName);
-      if (root && !root.userData.realisticAssetLoaded) replaceProceduralChildren(root, config);
-    });
+const hydrateGroup = equipmentGroup => {
+  if (!equipmentGroup?.isGroup) return;
+  ASSETS.forEach(config => {
+    const root = equipmentGroup.getObjectByName(config.rootName);
+    if (root && !root.userData.realisticAssetLoaded) replaceProceduralChildren(root, config);
   });
 };
+
+const hydrate = () => hydrateGroup(window.__carmOperatingRoomEquipment);
 
 export const installRealisticOperatingRoomAssets = () => {
   if (installed || typeof window === 'undefined') return;
   installed = true;
+  console.info('[OR assets] installer active');
 
   const originalAdd = THREE.Object3D.prototype.add;
   THREE.Object3D.prototype.add = function realisticOrCaptureAdd(...objects) {
     const result = originalAdd.apply(this, objects);
+
+    // Important: operatingRoomRuntime stores the original Scene.add before this
+    // module installs, so watching the scene attachment alone can be bypassed.
+    // The equipment layer itself still calls Group.add when its children are
+    // attached, which gives us a reliable capture point.
+    if (this?.name === EQUIPMENT_GROUP_NAME) {
+      window.__carmOperatingRoomEquipment = this;
+      queueMicrotask(() => hydrateGroup(this));
+    }
+
     for (const object of objects) {
       if (object?.name === EQUIPMENT_GROUP_NAME) {
         window.__carmOperatingRoomEquipment = object;
-        queueMicrotask(hydrate);
+        queueMicrotask(() => hydrateGroup(object));
       }
     }
     return result;
   };
 
-  // Retry briefly because the OR layer is created asynchronously relative to
-  // React/module initialization. Stop once all three assets are hydrated.
   timer = window.setInterval(() => {
     hydrate();
     if (loaded.size === ASSETS.length) {
