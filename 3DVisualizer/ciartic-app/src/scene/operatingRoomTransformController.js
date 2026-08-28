@@ -18,14 +18,44 @@ const PATIENT_EXCLUSION_X = 0.95;
 const PATIENT_EXCLUSION_Z = 1.35;
 const DEFAULT_NUDGE_M = 0.10;
 const DEFAULT_ROTATE_DEG = 15;
+const MOVE_DURATION_MS = 180;
 
 const state = {
   selectedId: 'iv-pole',
   dirty: false,
   revision: 0,
   lastRandomSeed: null,
-  message: 'Select an OR object, then use X/Y/Z or rotation controls.',
+  message: 'Select an OR object and move it directly. Camera remains free.',
   subscribers: new Set(),
+};
+
+const definition = id => OBJECTS.find(item => item.id === id) || null;
+
+const equipmentGroups = () => {
+  const groups = [];
+  const set = window.__carmOperatingRoomEquipmentGroups;
+  if (set instanceof Set) groups.push(...set);
+  if (window.__carmOperatingRoomEquipment?.isGroup) groups.push(window.__carmOperatingRoomEquipment);
+  return [...new Set(groups)].filter(group => group?.isGroup && group.parent);
+};
+
+const rootsForId = id => {
+  const def = definition(id);
+  if (!def) return [];
+  return equipmentGroups()
+    .map(group => ({ group, root: group.getObjectByName(def.rootName) }))
+    .filter(item => item.root);
+};
+
+const getSelectedPose = () => {
+  const first = rootsForId(state.selectedId)[0]?.root;
+  if (!first) return null;
+  return {
+    x: first.position.x,
+    y: first.position.y,
+    z: first.position.z,
+    rotationYDeg: THREE.MathUtils.radToDeg(first.rotation.y),
+  };
 };
 
 const snapshot = () => ({
@@ -36,6 +66,7 @@ const snapshot = () => ({
   message: state.message,
   objects: OBJECTS.map(item => ({ ...item })),
   pose: getSelectedPose(),
+  ready: equipmentGroups().length > 0,
 });
 
 const emit = () => {
@@ -52,22 +83,6 @@ export const subscribeOperatingRoomTransform = listener => {
   return () => state.subscribers.delete(listener);
 };
 
-const equipmentGroups = () => {
-  const set = window.__carmOperatingRoomEquipmentGroups;
-  const groups = set instanceof Set ? [...set] : [];
-  if (window.__carmOperatingRoomEquipment?.isGroup) groups.push(window.__carmOperatingRoomEquipment);
-  return [...new Set(groups)].filter(group => group?.isGroup && group.parent);
-};
-
-const definition = id => OBJECTS.find(item => item.id === id) || null;
-const rootsForId = id => {
-  const def = definition(id);
-  if (!def) return [];
-  return equipmentGroups()
-    .map(group => ({ group, root: group.getObjectByName(def.rootName) }))
-    .filter(item => item.root);
-};
-
 const safetyPair = (group, id) => {
   const scene = group.parent;
   const safetyGroup = scene?.getObjectByName?.('operating_room_safety_bubbles');
@@ -77,14 +92,32 @@ const safetyPair = (group, id) => {
   };
 };
 
-const syncEnvelopeTransform = (group, id, deltaPosition, deltaRotationY = 0) => {
+const moveSafetyEnvelope = (group, id, delta) => {
   const { bubble, edges } = safetyPair(group, id);
   [bubble, edges].forEach(object => {
     if (!object) return;
-    object.position.add(deltaPosition);
-    object.rotation.y += deltaRotationY;
+    object.position.add(delta);
     object.updateMatrixWorld(true);
   });
+};
+
+const rebuildSafetyEnvelope = (group, id, root) => {
+  const { bubble, edges } = safetyPair(group, id);
+  if (!bubble || !edges || !root) return;
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root).expandByScalar(0.12);
+  const center = new THREE.Vector3();
+  const size = new THREE.Vector3();
+  box.getCenter(center);
+  box.getSize(size);
+  bubble.position.copy(center);
+  bubble.scale.set(size.x || 0.01, size.y || 0.01, size.z || 0.01);
+  edges.position.copy(center);
+  edges.scale.set(size.x || 0.01, size.y || 0.01, size.z || 0.01);
+  bubble.rotation.set(0, 0, 0);
+  edges.rotation.set(0, 0, 0);
+  bubble.updateMatrixWorld(true);
+  edges.updateMatrixWorld(true);
 };
 
 const markDirty = message => {
@@ -92,6 +125,56 @@ const markDirty = message => {
   state.revision += 1;
   state.message = `${message} Run PREVIEW PATH again before MOVE C-ARM.`;
   emit();
+};
+
+const easeInOut = t => t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2;
+
+const animateEntry = ({ group, root }, targetPosition, targetRotationY) => new Promise(resolve => {
+  const startPosition = root.position.clone();
+  const startRotationY = root.rotation.y;
+  const started = performance.now();
+  let lastPosition = startPosition.clone();
+
+  const frame = now => {
+    const raw = Math.min(1, (now - started) / MOVE_DURATION_MS);
+    const t = easeInOut(raw);
+    root.position.lerpVectors(startPosition, targetPosition, t);
+    root.rotation.y = THREE.MathUtils.lerp(startRotationY, targetRotationY, t);
+    root.updateMatrixWorld(true);
+
+    const delta = root.position.clone().sub(lastPosition);
+    if (delta.lengthSq() > 0) moveSafetyEnvelope(group, definition(state.selectedId)?.id || '', delta);
+    lastPosition.copy(root.position);
+
+    if (raw < 1) {
+      requestAnimationFrame(frame);
+    } else {
+      rebuildSafetyEnvelope(group, definition(state.selectedId)?.id || '', root);
+      resolve();
+    }
+  };
+
+  requestAnimationFrame(frame);
+});
+
+const animateObjectById = async (id, mutateTarget) => {
+  const entries = rootsForId(id);
+  if (!entries.length) {
+    state.message = 'No live OR object root found yet.';
+    emit();
+    return false;
+  }
+
+  await Promise.all(entries.map(entry => {
+    const targetPosition = entry.root.position.clone();
+    let targetRotationY = entry.root.rotation.y;
+    const result = mutateTarget(targetPosition, targetRotationY);
+    if (result?.rotationY != null) targetRotationY = result.rotationY;
+    return animateEntry(entry, targetPosition, targetRotationY);
+  }));
+
+  emit();
+  return true;
 };
 
 export const selectOperatingRoomObject = id => {
@@ -102,50 +185,28 @@ export const selectOperatingRoomObject = id => {
   return true;
 };
 
-export const getSelectedPose = () => {
-  const first = rootsForId(state.selectedId)[0]?.root;
-  if (!first) return null;
-  return {
-    x: first.position.x,
-    y: first.position.y,
-    z: first.position.z,
-    rotationYDeg: THREE.MathUtils.radToDeg(first.rotation.y),
-  };
-};
+export { getSelectedPose };
 
-export const nudgeSelectedOperatingRoomObject = (axis, deltaM = DEFAULT_NUDGE_M) => {
+export const nudgeSelectedOperatingRoomObject = async (axis, deltaM = DEFAULT_NUDGE_M) => {
   if (!['x', 'y', 'z'].includes(axis)) return false;
-  const entries = rootsForId(state.selectedId);
-  if (!entries.length) return false;
-
-  entries.forEach(({ group, root }) => {
-    const before = root.position.clone();
-    root.position[axis] += deltaM;
-    if (axis === 'x') root.position.x = THREE.MathUtils.clamp(root.position.x, -ROOM_X, ROOM_X);
-    if (axis === 'z') root.position.z = THREE.MathUtils.clamp(root.position.z, -ROOM_Z, ROOM_Z);
-    if (axis === 'y') root.position.y = THREE.MathUtils.clamp(root.position.y, -0.25, 1.5);
-    const delta = root.position.clone().sub(before);
-    root.updateMatrixWorld(true);
-    syncEnvelopeTransform(group, state.selectedId, delta, 0);
+  const id = state.selectedId;
+  const moved = await animateObjectById(id, target => {
+    target[axis] += deltaM;
+    if (axis === 'x') target.x = THREE.MathUtils.clamp(target.x, -ROOM_X, ROOM_X);
+    if (axis === 'z') target.z = THREE.MathUtils.clamp(target.z, -ROOM_Z, ROOM_Z);
+    if (axis === 'y') target.y = THREE.MathUtils.clamp(target.y, -0.25, 1.5);
+    return null;
   });
-
-  markDirty(`${definition(state.selectedId)?.label || 'OR object'} moved on ${axis.toUpperCase()}.`);
-  return true;
+  if (moved) markDirty(`${definition(id)?.label || 'OR object'} moved on ${axis.toUpperCase()}.`);
+  return moved;
 };
 
-export const rotateSelectedOperatingRoomObject = (deltaDeg = DEFAULT_ROTATE_DEG) => {
-  const entries = rootsForId(state.selectedId);
-  if (!entries.length) return false;
+export const rotateSelectedOperatingRoomObject = async (deltaDeg = DEFAULT_ROTATE_DEG) => {
+  const id = state.selectedId;
   const deltaRad = THREE.MathUtils.degToRad(deltaDeg);
-
-  entries.forEach(({ group, root }) => {
-    root.rotation.y += deltaRad;
-    root.updateMatrixWorld(true);
-    syncEnvelopeTransform(group, state.selectedId, new THREE.Vector3(), deltaRad);
-  });
-
-  markDirty(`${definition(state.selectedId)?.label || 'OR object'} rotated ${deltaDeg > 0 ? 'right' : 'left'}.`);
-  return true;
+  const moved = await animateObjectById(id, (_target, rotationY) => ({ rotationY: rotationY + deltaRad }));
+  if (moved) markDirty(`${definition(id)?.label || 'OR object'} rotated ${deltaDeg > 0 ? 'right' : 'left'}.`);
+  return moved;
 };
 
 const mulberry32 = seed => {
@@ -173,7 +234,7 @@ const candidateIsValid = (x, z, occupied) => {
   return occupied.every(p => Math.hypot(x - p.x, z - p.z) >= MIN_OBJECT_SPACING_M);
 };
 
-export const randomizeOperatingRoomLayout = (seed = randomSeed()) => {
+export const randomizeOperatingRoomLayout = async (seed = randomSeed()) => {
   const groups = equipmentGroups();
   if (!groups.length) return false;
 
@@ -191,37 +252,20 @@ export const randomizeOperatingRoomLayout = (seed = randomSeed()) => {
         break;
       }
     }
-    if (!chosen) {
-      chosen = {
-        x: (rand() * 2 - 1) * ROOM_X,
-        z: (rand() * 2 - 1) * ROOM_Z,
-        rotationY: rand() * Math.PI * 2,
-      };
-    }
+    if (!chosen) chosen = { x: (rand() * 2 - 1) * ROOM_X, z: (rand() * 2 - 1) * ROOM_Z, rotationY: rand() * Math.PI * 2 };
     occupied.push(chosen);
     placements.set(def.id, chosen);
   });
 
-  groups.forEach(group => {
-    OBJECTS.forEach(def => {
-      const root = group.getObjectByName(def.rootName);
-      const placement = placements.get(def.id);
-      if (!root || !placement) return;
-      const oldPosition = root.position.clone();
-      const oldRotation = root.rotation.y;
-      root.position.x = placement.x;
-      root.position.z = placement.z;
-      // Keep every object on its existing vertical level; randomization is a floor-layout study tool.
-      root.rotation.y = placement.rotationY;
-      root.updateMatrixWorld(true);
-      syncEnvelopeTransform(
-        group,
-        def.id,
-        root.position.clone().sub(oldPosition),
-        root.rotation.y - oldRotation,
-      );
-    });
-  });
+  await Promise.all(groups.flatMap(group => OBJECTS.map(def => {
+    const root = group.getObjectByName(def.rootName);
+    const placement = placements.get(def.id);
+    if (!root || !placement) return Promise.resolve();
+    const target = root.position.clone();
+    target.x = placement.x;
+    target.z = placement.z;
+    return animateEntry({ group, root }, target, placement.rotationY).then(() => rebuildSafetyEnvelope(group, def.id, root));
+  })));
 
   state.lastRandomSeed = seed >>> 0;
   markDirty(`OR randomized with seed ${state.lastRandomSeed}.`);
@@ -257,34 +301,24 @@ const installMoveGuard = () => {
 const installKeyboard = () => {
   window.addEventListener('keydown', event => {
     const tag = (event.target?.tagName || '').toLowerCase();
-    if (['input', 'textarea', 'select'].includes(tag) || event.repeat) return;
-    if (!event.altKey) return;
-
-    if (event.key === 'ArrowLeft') {
-      event.preventDefault();
-      rotateSelectedOperatingRoomObject(-DEFAULT_ROTATE_DEG);
-    } else if (event.key === 'ArrowRight') {
-      event.preventDefault();
-      rotateSelectedOperatingRoomObject(DEFAULT_ROTATE_DEG);
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      nudgeSelectedOperatingRoomObject('z', -DEFAULT_NUDGE_M);
-    } else if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      nudgeSelectedOperatingRoomObject('z', DEFAULT_NUDGE_M);
-    }
+    if (['input', 'textarea', 'select'].includes(tag) || event.repeat || !event.altKey) return;
+    if (event.key === 'ArrowLeft') { event.preventDefault(); rotateSelectedOperatingRoomObject(-DEFAULT_ROTATE_DEG); }
+    else if (event.key === 'ArrowRight') { event.preventDefault(); rotateSelectedOperatingRoomObject(DEFAULT_ROTATE_DEG); }
+    else if (event.key === 'ArrowUp') { event.preventDefault(); nudgeSelectedOperatingRoomObject('z', -DEFAULT_NUDGE_M); }
+    else if (event.key === 'ArrowDown') { event.preventDefault(); nudgeSelectedOperatingRoomObject('z', DEFAULT_NUDGE_M); }
   });
 };
 
 if (typeof window !== 'undefined') {
   installMoveGuard();
   installKeyboard();
+  window.setInterval(emit, 500);
   subscribeCollisionPlanner(planner => {
     if (!state.dirty) return;
     if (!['DIRECT_CLEAR', 'DIRECT_NEAR', 'REROUTED', 'BLOCKED'].includes(planner.status)) return;
     state.dirty = false;
     state.message = planner.status === 'BLOCKED'
-      ? 'Randomized/edited OR checked: no safe route is currently available.'
+      ? 'Edited OR checked: no safe route is currently available.'
       : 'Edited OR checked. MOVE C-ARM may use the latest previewed route.';
     emit();
   });
