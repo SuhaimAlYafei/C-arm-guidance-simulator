@@ -79,7 +79,7 @@ const readSimulatorContext = () => {
       verification: geometryVerified ? {
         verified: true,
         isocenter_error_mm: isoMatch ? parseNumber(isoMatch[1]) : null,
-        central_ray_error_mm: rayMatch ? parseNumber(rayMatch[2]),
+        central_ray_error_mm: rayMatch ? parseNumber(rayMatch[1]) : null,
       } : null,
       simulatorToleranceMm: 1,
     },
