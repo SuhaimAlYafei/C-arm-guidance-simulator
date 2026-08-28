@@ -3,11 +3,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 const EQUIPMENT_GROUP_NAME = 'operating_room_equipment_layer';
+const MAIN_SCENE_BACKGROUND = 0xeef2f5;
 
-// Keep all three realistic assets enabled immediately. The previous delayed
-// hydration left the old procedural staff visible long enough to look like a
-// regression. Performance is handled by sequential loading, disabled staff
-// shadows, frustum culling, and a bounded startup discovery loop instead.
+// Load the small IV pole first, then staff sequentially. The key reliability
+// change is scene discovery from the live renderer instead of relying on
+// Object3D.add interception, because operatingRoomRuntime may add the layer
+// through a previously captured add() reference.
 const ASSETS = [
   { rootName: 'or_iv_pole', id: 'iv-pole', url: '/operating_room/iv_pole.glb', targetHeightM: 1.9, clearanceM: 0.13, shadows: true },
   { rootName: 'or_scrub_nurse', id: 'scrub-nurse', url: '/operating_room/scrub_nurse.glb', targetHeightM: 1.68, clearanceM: 0.16, shadows: false },
@@ -17,21 +18,23 @@ const ASSETS = [
 const loader = new GLTFLoader();
 loader.setMeshoptDecoder(MeshoptDecoder);
 
-const loadingRoots = new WeakSet();
 const hydratedRoots = new WeakSet();
-const scheduledRoots = new WeakSet();
-const capturedEquipmentGroups = new Set();
-const hydrationQueue = [];
-let queueRunning = false;
+const loadingRoots = new WeakSet();
+const capturedGroups = new Set();
 let installed = false;
-let startupTimer = null;
-let originalAdd = null;
+let previousRender = null;
+let queueRunning = false;
+
+const isMainScene = scene => (
+  scene?.background?.isColor
+  && scene.background.getHex() === MAIN_SCENE_BACKGROUND
+);
 
 const disposeObject = object => {
   object?.traverse?.(child => {
     if (!child?.isMesh) return;
     child.geometry?.dispose?.();
-    if (Array.isArray(child.material)) child.material.forEach(m => m?.dispose?.());
+    if (Array.isArray(child.material)) child.material.forEach(material => material?.dispose?.());
     else child.material?.dispose?.();
   });
 };
@@ -43,16 +46,14 @@ const prepareModel = (model, config) => {
   model.updateMatrixWorld(true);
 
   const box = new THREE.Box3().setFromObject(model);
-  const size = new THREE.Vector3();
-  box.getSize(size);
+  const size = box.getSize(new THREE.Vector3());
   if (!Number.isFinite(size.y) || size.y <= 1e-6) throw new Error('Model has no measurable height.');
 
   model.scale.setScalar(config.targetHeightM / size.y);
   model.updateMatrixWorld(true);
 
   const scaledBox = new THREE.Box3().setFromObject(model);
-  const center = new THREE.Vector3();
-  scaledBox.getCenter(center);
+  const center = scaledBox.getCenter(new THREE.Vector3());
   model.position.set(-center.x, -scaledBox.min.y, -center.z);
 
   model.traverse(object => {
@@ -80,8 +81,8 @@ const refreshSafetyEnvelope = (root, config) => {
     bubble.geometry?.dispose?.();
     bubble.geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
     bubble.position.copy(center);
-    bubble.scale.set(1, 1, 1);
     bubble.rotation.set(0, 0, 0);
+    bubble.scale.set(1, 1, 1);
     bubble.updateMatrixWorld(true);
   }
 
@@ -92,46 +93,71 @@ const refreshSafetyEnvelope = (root, config) => {
     edges.geometry = new THREE.EdgesGeometry(boxGeometry);
     boxGeometry.dispose();
     edges.position.copy(center);
-    edges.scale.set(1, 1, 1);
     edges.rotation.set(0, 0, 0);
+    edges.scale.set(1, 1, 1);
     edges.updateMatrixWorld(true);
   }
 };
 
-const replaceProceduralChildren = async (root, config) => {
-  if (!root || loadingRoots.has(root) || hydratedRoots.has(root) || root.userData.realisticAssetLoaded) return;
+const loadIntoRoot = async (root, config) => {
+  if (!root || hydratedRoots.has(root) || loadingRoots.has(root) || root.userData.realisticAssetLoaded) return true;
   loadingRoots.add(root);
 
-  // Hide the low-detail procedural placeholder while the real GLB is loading.
-  // If loading fails we restore it, so the scene never loses the object entirely.
-  const previousVisible = root.visible;
-  root.visible = false;
+  const proceduralChildren = [...root.children];
+  proceduralChildren.forEach(child => { child.visible = false; });
 
   try {
-    console.info(`[OR assets] Loading ${config.url} into ${config.rootName}`, root.uuid);
+    console.info(`[OR assets] Loading ${config.url} into ${config.rootName}`);
     const gltf = await loader.loadAsync(config.url);
     const model = prepareModel(gltf.scene, config);
     model.name = `${config.rootName}_realistic_glb`;
     model.userData.realisticOperatingRoomAsset = true;
     model.userData.sourceUrl = config.url;
 
-    const oldChildren = [...root.children];
-    oldChildren.forEach(child => root.remove(child));
-    oldChildren.forEach(disposeObject);
+    proceduralChildren.forEach(child => root.remove(child));
+    proceduralChildren.forEach(disposeObject);
     root.add(model);
     root.userData.realisticAssetLoaded = true;
     root.userData.realisticAssetUrl = config.url;
-    root.visible = previousVisible;
     root.updateMatrixWorld(true);
-
     refreshSafetyEnvelope(root, config);
     hydratedRoots.add(root);
-    console.info(`[OR assets] READY ${config.rootName}`, root.uuid);
+    console.info(`[OR assets] READY ${config.rootName}`);
+    return true;
   } catch (error) {
-    root.visible = previousVisible;
+    proceduralChildren.forEach(child => { child.visible = true; });
     console.error(`[OR assets] FAILED ${config.rootName}`, error);
+    return false;
   } finally {
     loadingRoots.delete(root);
+  }
+};
+
+const findEquipmentGroups = scene => {
+  const found = [];
+  const direct = scene?.getObjectByName?.(EQUIPMENT_GROUP_NAME);
+  if (direct?.isGroup) found.push(direct);
+
+  scene?.traverse?.(object => {
+    if (!object?.isGroup) return;
+    if (object.name === EQUIPMENT_GROUP_NAME || object.userData?.operatingRoomEnvironment) found.push(object);
+  });
+
+  return [...new Set(found)].filter(group => group?.parent);
+};
+
+const captureSceneGroups = scene => {
+  if (!isMainScene(scene)) return;
+  const groups = findEquipmentGroups(scene);
+  groups.forEach(group => capturedGroups.add(group));
+  [...capturedGroups].forEach(group => {
+    if (!group?.parent) capturedGroups.delete(group);
+  });
+
+  const first = groups[0] || [...capturedGroups][0] || null;
+  if (first) {
+    window.__carmOperatingRoomEquipment = first;
+    window.__carmOperatingRoomEquipmentGroups = capturedGroups;
   }
 };
 
@@ -139,86 +165,30 @@ const runHydrationQueue = async () => {
   if (queueRunning) return;
   queueRunning = true;
   try {
-    while (hydrationQueue.length) {
-      const { root, config } = hydrationQueue.shift();
-      if (!root?.parent || root.userData.realisticAssetLoaded) continue;
-      await replaceProceduralChildren(root, config);
-      // Yield one frame between heavy GLB replacements so the UI remains responsive.
-      await new Promise(resolve => requestAnimationFrame(() => resolve()));
+    for (const config of ASSETS) {
+      for (const group of [...capturedGroups]) {
+        if (!group?.parent) continue;
+        const root = group.getObjectByName(config.rootName);
+        if (!root) continue;
+        await loadIntoRoot(root, config);
+      }
     }
   } finally {
     queueRunning = false;
   }
 };
 
-const scheduleHydration = (root, config) => {
-  if (!root || root.userData.realisticAssetLoaded || scheduledRoots.has(root)) return;
-  scheduledRoots.add(root);
-  hydrationQueue.push({ root, config });
-  queueMicrotask(runHydrationQueue);
-};
-
-const hydrateGroup = equipmentGroup => {
-  if (!equipmentGroup?.isGroup || !equipmentGroup.parent) return;
-  capturedEquipmentGroups.add(equipmentGroup);
-  window.__carmOperatingRoomEquipment = equipmentGroup;
-  window.__carmOperatingRoomEquipmentGroups = capturedEquipmentGroups;
-
-  ASSETS.forEach(config => {
-    const root = equipmentGroup.getObjectByName(config.rootName);
-    if (root) scheduleHydration(root, config);
-  });
-};
-
-const pruneGroups = () => {
-  [...capturedEquipmentGroups].forEach(group => {
-    if (!group?.isGroup || !group.parent) capturedEquipmentGroups.delete(group);
-  });
-};
-
-const allKnownRootsScheduled = () => {
-  pruneGroups();
-  if (!capturedEquipmentGroups.size) return false;
-  for (const group of capturedEquipmentGroups) {
-    for (const config of ASSETS) {
-      const root = group.getObjectByName(config.rootName);
-      if (root && !root.userData.realisticAssetLoaded && !scheduledRoots.has(root)) return false;
-    }
-  }
-  return true;
-};
-
 export const installRealisticOperatingRoomAssets = () => {
   if (installed || typeof window === 'undefined') return;
   installed = true;
-  console.info('[OR assets] realistic sequential installer active');
+  console.info('[OR assets] render-scene discovery installer active');
 
-  originalAdd = THREE.Object3D.prototype.add;
-  THREE.Object3D.prototype.add = function realisticOrCaptureAdd(...objects) {
-    const result = originalAdd.apply(this, objects);
-
-    if (this?.name === EQUIPMENT_GROUP_NAME) hydrateGroup(this);
-    objects.forEach(object => {
-      if (object?.name === EQUIPMENT_GROUP_NAME) hydrateGroup(object);
-    });
-    return result;
+  previousRender = THREE.WebGLRenderer.prototype.render;
+  THREE.WebGLRenderer.prototype.render = function realisticOrRenderCapture(scene, camera) {
+    captureSceneGroups(scene);
+    if (capturedGroups.size) void runHydrationQueue();
+    return previousRender.call(this, scene, camera);
   };
-
-  // Bounded startup discovery only. No permanent polling loop.
-  let attempts = 0;
-  startupTimer = window.setInterval(() => {
-    attempts += 1;
-    pruneGroups();
-    capturedEquipmentGroups.forEach(hydrateGroup);
-    if (allKnownRootsScheduled() || attempts >= 20) {
-      window.clearInterval(startupTimer);
-      startupTimer = null;
-    }
-  }, 250);
-
-  window.addEventListener('beforeunload', () => {
-    if (startupTimer) window.clearInterval(startupTimer);
-  }, { once: true });
 };
 
 installRealisticOperatingRoomAssets();
