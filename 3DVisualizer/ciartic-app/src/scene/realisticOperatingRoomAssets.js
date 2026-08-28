@@ -4,10 +4,12 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 const EQUIPMENT_GROUP_NAME = 'operating_room_equipment_layer';
 
+// Keep the IV pole immediate because it is central to the collision experiment.
+// Staff assets are much heavier, so load them sequentially after first render.
 const ASSETS = [
-  { rootName: 'or_iv_pole', id: 'iv-pole', url: '/operating_room/iv_pole.glb', targetHeightM: 1.9, clearanceM: 0.13 },
-  { rootName: 'or_surgeon', id: 'surgeon', url: '/operating_room/surgeon.glb', targetHeightM: 1.72, clearanceM: 0.16 },
-  { rootName: 'or_scrub_nurse', id: 'scrub-nurse', url: '/operating_room/scrub_nurse.glb', targetHeightM: 1.68, clearanceM: 0.16 },
+  { rootName: 'or_iv_pole', id: 'iv-pole', url: '/operating_room/iv_pole.glb', targetHeightM: 1.9, clearanceM: 0.13, delayMs: 0, shadows: true },
+  { rootName: 'or_scrub_nurse', id: 'scrub-nurse', url: '/operating_room/scrub_nurse.glb', targetHeightM: 1.68, clearanceM: 0.16, delayMs: 450, shadows: false },
+  { rootName: 'or_surgeon', id: 'surgeon', url: '/operating_room/surgeon.glb', targetHeightM: 1.72, clearanceM: 0.16, delayMs: 1100, shadows: false },
 ];
 
 const loader = new GLTFLoader();
@@ -15,9 +17,11 @@ loader.setMeshoptDecoder(MeshoptDecoder);
 
 const loadingRoots = new WeakSet();
 const hydratedRoots = new WeakSet();
+const scheduledRoots = new WeakSet();
 const capturedEquipmentGroups = new Set();
 let installed = false;
-let timer = null;
+let startupTimer = null;
+let originalAdd = null;
 
 const disposeObject = object => {
   object?.traverse?.(child => {
@@ -28,7 +32,7 @@ const disposeObject = object => {
   });
 };
 
-const prepareModel = (model, targetHeightM) => {
+const prepareModel = (model, config) => {
   model.position.set(0, 0, 0);
   model.rotation.set(0, 0, 0);
   model.scale.set(1, 1, 1);
@@ -39,7 +43,7 @@ const prepareModel = (model, targetHeightM) => {
   box.getSize(size);
   if (!Number.isFinite(size.y) || size.y <= 1e-6) throw new Error('Model has no measurable height.');
 
-  model.scale.setScalar(targetHeightM / size.y);
+  model.scale.setScalar(config.targetHeightM / size.y);
   model.updateMatrixWorld(true);
 
   const scaledBox = new THREE.Box3().setFromObject(model);
@@ -49,8 +53,9 @@ const prepareModel = (model, targetHeightM) => {
 
   model.traverse(object => {
     if (!object.isMesh) return;
-    object.castShadow = true;
-    object.receiveShadow = true;
+    object.castShadow = Boolean(config.shadows);
+    object.receiveShadow = Boolean(config.shadows);
+    object.frustumCulled = true;
   });
   model.updateMatrixWorld(true);
   return model;
@@ -63,10 +68,8 @@ const refreshSafetyEnvelope = (root, config) => {
 
   root.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(root).expandByScalar(config.clearanceM);
-  const center = new THREE.Vector3();
-  const size = new THREE.Vector3();
-  box.getCenter(center);
-  box.getSize(size);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
 
   const bubble = safetyGroup.getObjectByName(`safety_${config.id}`);
   if (bubble?.isMesh) {
@@ -80,7 +83,9 @@ const refreshSafetyEnvelope = (root, config) => {
   const edges = safetyGroup.getObjectByName(`safety_edges_${config.id}`);
   if (edges?.isLineSegments) {
     edges.geometry?.dispose?.();
-    edges.geometry = new THREE.EdgesGeometry(new THREE.BoxGeometry(size.x, size.y, size.z));
+    const boxGeometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+    edges.geometry = new THREE.EdgesGeometry(boxGeometry);
+    boxGeometry.dispose();
     edges.position.copy(center);
     edges.rotation.set(0, 0, 0);
     edges.updateMatrixWorld(true);
@@ -94,7 +99,7 @@ const replaceProceduralChildren = async (root, config) => {
   try {
     console.info(`[OR assets] Loading ${config.url} into ${config.rootName}`, root.uuid);
     const gltf = await loader.loadAsync(config.url);
-    const model = prepareModel(gltf.scene, config.targetHeightM);
+    const model = prepareModel(gltf.scene, config);
     model.name = `${config.rootName}_realistic_glb`;
     model.userData.realisticOperatingRoomAsset = true;
     model.userData.sourceUrl = config.url;
@@ -112,60 +117,90 @@ const replaceProceduralChildren = async (root, config) => {
     console.info(`[OR assets] READY ${config.rootName}`, root.uuid);
   } catch (error) {
     console.error(`[OR assets] FAILED ${config.rootName}`, error);
+  } finally {
+    loadingRoots.delete(root);
   }
 };
 
+const scheduleHydration = (root, config) => {
+  if (!root || root.userData.realisticAssetLoaded || scheduledRoots.has(root)) return;
+  scheduledRoots.add(root);
+
+  const run = () => replaceProceduralChildren(root, config);
+  if (config.delayMs <= 0) {
+    queueMicrotask(run);
+    return;
+  }
+
+  window.setTimeout(() => {
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(run, { timeout: 1600 });
+    } else {
+      run();
+    }
+  }, config.delayMs);
+};
+
 const hydrateGroup = equipmentGroup => {
-  if (!equipmentGroup?.isGroup) return;
+  if (!equipmentGroup?.isGroup || !equipmentGroup.parent) return;
   capturedEquipmentGroups.add(equipmentGroup);
   window.__carmOperatingRoomEquipment = equipmentGroup;
   window.__carmOperatingRoomEquipmentGroups = capturedEquipmentGroups;
 
   ASSETS.forEach(config => {
     const root = equipmentGroup.getObjectByName(config.rootName);
-    if (root && !root.userData.realisticAssetLoaded) replaceProceduralChildren(root, config);
+    if (root) scheduleHydration(root, config);
   });
 };
 
-const hydrateAll = () => {
+const pruneGroups = () => {
   [...capturedEquipmentGroups].forEach(group => {
-    if (!group?.isGroup) capturedEquipmentGroups.delete(group);
-    else hydrateGroup(group);
+    if (!group?.isGroup || !group.parent) capturedEquipmentGroups.delete(group);
   });
-  if (window.__carmOperatingRoomEquipment?.isGroup) hydrateGroup(window.__carmOperatingRoomEquipment);
+};
+
+const allKnownRootsScheduled = () => {
+  pruneGroups();
+  if (!capturedEquipmentGroups.size) return false;
+  for (const group of capturedEquipmentGroups) {
+    for (const config of ASSETS) {
+      const root = group.getObjectByName(config.rootName);
+      if (root && !root.userData.realisticAssetLoaded && !scheduledRoots.has(root)) return false;
+    }
+  }
+  return true;
 };
 
 export const installRealisticOperatingRoomAssets = () => {
   if (installed || typeof window === 'undefined') return;
   installed = true;
-  console.info('[OR assets] installer active');
+  console.info('[OR assets] optimized installer active');
 
-  const originalAdd = THREE.Object3D.prototype.add;
+  originalAdd = THREE.Object3D.prototype.add;
   THREE.Object3D.prototype.add = function realisticOrCaptureAdd(...objects) {
     const result = originalAdd.apply(this, objects);
 
-    if (this?.name === EQUIPMENT_GROUP_NAME) {
-      capturedEquipmentGroups.add(this);
-      window.__carmOperatingRoomEquipment = this;
-      window.__carmOperatingRoomEquipmentGroups = capturedEquipmentGroups;
-      queueMicrotask(() => hydrateGroup(this));
-    }
-
-    for (const object of objects) {
-      if (object?.name === EQUIPMENT_GROUP_NAME) {
-        capturedEquipmentGroups.add(object);
-        window.__carmOperatingRoomEquipment = object;
-        window.__carmOperatingRoomEquipmentGroups = capturedEquipmentGroups;
-        queueMicrotask(() => hydrateGroup(object));
-      }
-    }
+    if (this?.name === EQUIPMENT_GROUP_NAME) hydrateGroup(this);
+    objects.forEach(object => {
+      if (object?.name === EQUIPMENT_GROUP_NAME) hydrateGroup(object);
+    });
     return result;
   };
 
-  timer = window.setInterval(hydrateAll, 500);
+  // Bounded startup discovery instead of a permanent 500 ms polling loop.
+  let attempts = 0;
+  startupTimer = window.setInterval(() => {
+    attempts += 1;
+    pruneGroups();
+    capturedEquipmentGroups.forEach(hydrateGroup);
+    if (allKnownRootsScheduled() || attempts >= 20) {
+      window.clearInterval(startupTimer);
+      startupTimer = null;
+    }
+  }, 300);
 
   window.addEventListener('beforeunload', () => {
-    if (timer) window.clearInterval(timer);
+    if (startupTimer) window.clearInterval(startupTimer);
   }, { once: true });
 };
 
