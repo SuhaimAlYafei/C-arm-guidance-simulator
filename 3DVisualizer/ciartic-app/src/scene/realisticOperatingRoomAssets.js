@@ -3,12 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 const EQUIPMENT_GROUP_NAME = 'operating_room_equipment_layer';
-const MAIN_SCENE_BACKGROUND = 0xeef2f5;
 
-// Load the small IV pole first, then staff sequentially. The key reliability
-// change is scene discovery from the live renderer instead of relying on
-// Object3D.add interception, because operatingRoomRuntime may add the layer
-// through a previously captured add() reference.
 const ASSETS = [
   { rootName: 'or_iv_pole', id: 'iv-pole', url: '/operating_room/iv_pole.glb', targetHeightM: 1.9, clearanceM: 0.13, shadows: true },
   { rootName: 'or_scrub_nurse', id: 'scrub-nurse', url: '/operating_room/scrub_nurse.glb', targetHeightM: 1.68, clearanceM: 0.16, shadows: false },
@@ -24,11 +19,7 @@ const capturedGroups = new Set();
 let installed = false;
 let previousRender = null;
 let queueRunning = false;
-
-const isMainScene = scene => (
-  scene?.background?.isColor
-  && scene.background.getHex() === MAIN_SCENE_BACKGROUND
-);
+let discoveryLogged = false;
 
 const disposeObject = object => {
   object?.traverse?.(child => {
@@ -147,8 +138,12 @@ const findEquipmentGroups = scene => {
 };
 
 const captureSceneGroups = scene => {
-  if (!isMainScene(scene)) return;
+  // Do not identify the simulator scene by background colour. Other runtime
+  // layers may change/replace Scene.background. The OR equipment layer itself
+  // is the authoritative marker for the scene we need.
   const groups = findEquipmentGroups(scene);
+  if (!groups.length) return;
+
   groups.forEach(group => capturedGroups.add(group));
   [...capturedGroups].forEach(group => {
     if (!group?.parent) capturedGroups.delete(group);
@@ -158,6 +153,17 @@ const captureSceneGroups = scene => {
   if (first) {
     window.__carmOperatingRoomEquipment = first;
     window.__carmOperatingRoomEquipmentGroups = capturedGroups;
+  }
+
+  if (!discoveryLogged) {
+    discoveryLogged = true;
+    console.info('[OR assets] FOUND operating-room equipment layer', {
+      groups: groups.length,
+      roots: ASSETS.map(config => ({
+        name: config.rootName,
+        found: Boolean(first?.getObjectByName?.(config.rootName)),
+      })),
+    });
   }
 };
 
@@ -169,7 +175,10 @@ const runHydrationQueue = async () => {
       for (const group of [...capturedGroups]) {
         if (!group?.parent) continue;
         const root = group.getObjectByName(config.rootName);
-        if (!root) continue;
+        if (!root) {
+          console.warn(`[OR assets] root not found: ${config.rootName}`);
+          continue;
+        }
         await loadIntoRoot(root, config);
       }
     }
@@ -181,7 +190,7 @@ const runHydrationQueue = async () => {
 export const installRealisticOperatingRoomAssets = () => {
   if (installed || typeof window === 'undefined') return;
   installed = true;
-  console.info('[OR assets] render-scene discovery installer active');
+  console.info('[OR assets] content-based scene discovery installer active');
 
   previousRender = THREE.WebGLRenderer.prototype.render;
   THREE.WebGLRenderer.prototype.render = function realisticOrRenderCapture(scene, camera) {
