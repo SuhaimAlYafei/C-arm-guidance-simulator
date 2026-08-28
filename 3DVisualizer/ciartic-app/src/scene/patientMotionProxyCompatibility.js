@@ -1,23 +1,43 @@
 // Compatibility bridge for the V3 respiratory-motion runtime.
 //
-// The collision model now uses segmented patient proxies (head/torso/pelvis/legs)
-// instead of the old monolithic `safety_patient-table` box. The existing motion
-// runtime historically bootstraps its thoracic envelope from that old name.
-// This bridge briefly exposes the torso proxy under the legacy name so the
-// runtime can measure it, then removes the alias as soon as the dynamic
-// `safety_patient-motion` envelope has been created.
+// The collision model uses segmented patient proxies (head/torso/pelvis/legs)
+// instead of the old monolithic `safety_patient-table` box. The motion runtime
+// still bootstraps its thoracic envelope from that legacy name, so this bridge
+// exposes a hidden torso-derived alias only long enough for initialization.
+// The alias is removed as soon as `safety_patient-motion` exists.
 //
-// This does not add a permanent collision obstacle and does not claim to model
-// physiological chest deformation. It only restores the research-only moving
-// safety-envelope experiment using the refined torso proxy.
+// This is a software-only geometric motion proxy, not a physiological model.
 
 import * as THREE from 'three';
 
 let installed = false;
 let timer = null;
 
+const liveOperatingRoomScene = () => {
+  // Prefer the live equipment groups installed by realisticOperatingRoomAssets.
+  const groups = window.__carmOperatingRoomEquipmentGroups;
+  if (groups instanceof Set) {
+    for (const group of groups) {
+      if (group?.isGroup && group.parent) return group.parent;
+    }
+  }
+
+  const equipment = window.__carmOperatingRoomEquipment;
+  if (equipment?.isGroup && equipment.parent) return equipment.parent;
+
+  // Keep this only as a fallback for builds that expose the main scene.
+  return window.__carmMainScene || null;
+};
+
+const removeAlias = (alias) => {
+  if (!alias?.userData?.respiratoryCompatibilityAlias || !alias.parent) return;
+  alias.parent.remove(alias);
+  alias.geometry?.dispose?.();
+  alias.material?.dispose?.();
+};
+
 const ensureBridge = () => {
-  const scene = window.__carmMainScene;
+  const scene = liveOperatingRoomScene();
   const safetyGroup = scene?.getObjectByName?.('operating_room_safety_bubbles');
   if (!safetyGroup) return false;
 
@@ -25,11 +45,7 @@ const ensureBridge = () => {
   const legacy = safetyGroup.getObjectByName('safety_patient-table');
 
   if (dynamic) {
-    if (legacy?.userData?.respiratoryCompatibilityAlias) {
-      safetyGroup.remove(legacy);
-      legacy.geometry?.dispose?.();
-      legacy.material?.dispose?.();
-    }
+    removeAlias(legacy);
     return true;
   }
 
@@ -38,11 +54,16 @@ const ensureBridge = () => {
   const torso = safetyGroup.getObjectByName('safety_patient-torso');
   if (!torso?.isMesh) return false;
 
-  // Clone only the torso envelope geometry. Keep it hidden and mark it so the
-  // bridge can remove it immediately after patientMotionRuntime initializes.
+  torso.updateMatrixWorld(true);
+
   const alias = new THREE.Mesh(
     torso.geometry.clone(),
-    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+    new THREE.MeshBasicMaterial({
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      colorWrite: false,
+    }),
   );
   alias.name = 'safety_patient-table';
   alias.position.copy(torso.position);
@@ -59,21 +80,23 @@ export const installPatientMotionProxyCompatibility = () => {
   if (installed || typeof window === 'undefined') return;
   installed = true;
 
+  // Fast startup polling only. Stop permanently once the dynamic envelope is
+  // established so this bridge adds no ongoing render-loop or timer overhead.
   timer = window.setInterval(() => {
     const ready = ensureBridge();
-    if (ready) {
-      window.clearInterval(timer);
-      timer = null;
-      console.info('[patient motion] segmented torso proxy READY');
-    }
+    if (!ready) return;
+    window.clearInterval(timer);
+    timer = null;
+    console.info('[patient motion] segmented torso proxy READY');
   }, 100);
 
   window.setTimeout(() => {
-    if (timer) {
-      window.clearInterval(timer);
-      timer = null;
-    }
-  }, 30000);
+    if (!timer) return;
+    window.clearInterval(timer);
+    timer = null;
+    const ready = ensureBridge();
+    if (!ready) console.warn('[patient motion] torso proxy initialization timed out');
+  }, 15000);
 };
 
 installPatientMotionProxyCompatibility();
