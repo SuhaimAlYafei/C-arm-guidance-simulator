@@ -7,6 +7,7 @@ import './scene/orDragOverride.js';
 import './scene/realisticOperatingRoomAssets.js';
 import './scene/orTransformUiCompatibility.js';
 import './scene/operatingRoomCollisionPolicy.js';
+import './scene/patientMotionProxyCompatibility.js';
 
 const parseNumber = (value) => {
   const parsed = Number(value);
@@ -78,7 +79,7 @@ const readSimulatorContext = () => {
       verification: geometryVerified ? {
         verified: true,
         isocenter_error_mm: isoMatch ? parseNumber(isoMatch[1]) : null,
-        central_ray_error_mm: rayMatch ? parseNumber(rayMatch[1]) : null,
+        central_ray_error_mm: rayMatch ? parseNumber(rayMatch[2]),
       } : null,
       simulatorToleranceMm: 1,
     },
