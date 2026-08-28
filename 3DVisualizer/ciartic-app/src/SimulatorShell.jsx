@@ -5,6 +5,7 @@ import ResearchControlDock from './components/ResearchControlDock.jsx';
 import AwardStudyPanel from './components/AwardStudyPanel.jsx';
 import './scene/orDragOverride.js';
 import './scene/realisticOperatingRoomAssets.js';
+import './scene/orTransformUiCompatibility.js';
 
 const parseNumber = (value) => {
   const parsed = Number(value);
