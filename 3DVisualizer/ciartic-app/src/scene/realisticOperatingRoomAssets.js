@@ -5,199 +5,136 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 const EQUIPMENT_GROUP_NAME = 'operating_room_equipment_layer';
 
 const ASSETS = [
-  { rootName: 'or_iv_pole', id: 'iv-pole', url: '/operating_room/iv_pole.glb', targetHeightM: 1.9, clearanceM: 0.13, shadows: true },
-  { rootName: 'or_scrub_nurse', id: 'scrub-nurse', url: '/operating_room/scrub_nurse.glb', targetHeightM: 1.68, clearanceM: 0.16, shadows: false },
-  { rootName: 'or_surgeon', id: 'surgeon', url: '/operating_room/surgeon.glb', targetHeightM: 1.72, clearanceM: 0.16, shadows: false },
+  { rootName: 'or_iv_pole', url: '/operating_room/iv_pole.glb', targetHeightM: 1.9 },
+  { rootName: 'or_surgeon', url: '/operating_room/surgeon.glb', targetHeightM: 1.72 },
+  { rootName: 'or_scrub_nurse', url: '/operating_room/scrub_nurse.glb', targetHeightM: 1.68 },
 ];
 
 const loader = new GLTFLoader();
 loader.setMeshoptDecoder(MeshoptDecoder);
 
-const hydratedRoots = new WeakSet();
 const loadingRoots = new WeakSet();
-const capturedGroups = new Set();
+const hydratedRoots = new WeakSet();
+const capturedEquipmentGroups = new Set();
 let installed = false;
-let previousRender = null;
-let queueRunning = false;
-let discoveryLogged = false;
+let timer = null;
 
 const disposeObject = object => {
   object?.traverse?.(child => {
     if (!child?.isMesh) return;
     child.geometry?.dispose?.();
-    if (Array.isArray(child.material)) child.material.forEach(material => material?.dispose?.());
+    if (Array.isArray(child.material)) child.material.forEach(m => m?.dispose?.());
     else child.material?.dispose?.();
   });
 };
 
-const prepareModel = (model, config) => {
+const prepareModel = (model, targetHeightM) => {
   model.position.set(0, 0, 0);
   model.rotation.set(0, 0, 0);
   model.scale.set(1, 1, 1);
   model.updateMatrixWorld(true);
 
   const box = new THREE.Box3().setFromObject(model);
-  const size = box.getSize(new THREE.Vector3());
+  const size = new THREE.Vector3();
+  box.getSize(size);
   if (!Number.isFinite(size.y) || size.y <= 1e-6) throw new Error('Model has no measurable height.');
 
-  model.scale.setScalar(config.targetHeightM / size.y);
+  model.scale.setScalar(targetHeightM / size.y);
   model.updateMatrixWorld(true);
 
   const scaledBox = new THREE.Box3().setFromObject(model);
-  const center = scaledBox.getCenter(new THREE.Vector3());
+  const center = new THREE.Vector3();
+  scaledBox.getCenter(center);
   model.position.set(-center.x, -scaledBox.min.y, -center.z);
 
   model.traverse(object => {
     if (!object.isMesh) return;
-    object.castShadow = Boolean(config.shadows);
-    object.receiveShadow = Boolean(config.shadows);
-    object.frustumCulled = true;
+    object.castShadow = true;
+    object.receiveShadow = true;
   });
   model.updateMatrixWorld(true);
   return model;
 };
 
-const refreshSafetyEnvelope = (root, config) => {
-  const scene = root?.parent?.parent;
-  const safetyGroup = scene?.getObjectByName?.('operating_room_safety_bubbles');
-  if (!safetyGroup) return;
-
-  root.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(root).expandByScalar(config.clearanceM);
-  const center = box.getCenter(new THREE.Vector3());
-  const size = box.getSize(new THREE.Vector3());
-
-  const bubble = safetyGroup.getObjectByName(`safety_${config.id}`);
-  if (bubble?.isMesh) {
-    bubble.geometry?.dispose?.();
-    bubble.geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
-    bubble.position.copy(center);
-    bubble.rotation.set(0, 0, 0);
-    bubble.scale.set(1, 1, 1);
-    bubble.updateMatrixWorld(true);
-  }
-
-  const edges = safetyGroup.getObjectByName(`safety_edges_${config.id}`);
-  if (edges?.isLineSegments) {
-    edges.geometry?.dispose?.();
-    const boxGeometry = new THREE.BoxGeometry(size.x, size.y, size.z);
-    edges.geometry = new THREE.EdgesGeometry(boxGeometry);
-    boxGeometry.dispose();
-    edges.position.copy(center);
-    edges.rotation.set(0, 0, 0);
-    edges.scale.set(1, 1, 1);
-    edges.updateMatrixWorld(true);
-  }
-};
-
-const loadIntoRoot = async (root, config) => {
-  if (!root || hydratedRoots.has(root) || loadingRoots.has(root) || root.userData.realisticAssetLoaded) return true;
+const replaceProceduralChildren = async (root, config) => {
+  if (!root || loadingRoots.has(root) || hydratedRoots.has(root) || root.userData.realisticAssetLoaded) return;
   loadingRoots.add(root);
 
-  const proceduralChildren = [...root.children];
-  proceduralChildren.forEach(child => { child.visible = false; });
-
   try {
-    console.info(`[OR assets] Loading ${config.url} into ${config.rootName}`);
+    console.info(`[OR assets] Loading ${config.url} into ${config.rootName}`, root.uuid);
     const gltf = await loader.loadAsync(config.url);
-    const model = prepareModel(gltf.scene, config);
+    const model = prepareModel(gltf.scene, config.targetHeightM);
     model.name = `${config.rootName}_realistic_glb`;
     model.userData.realisticOperatingRoomAsset = true;
     model.userData.sourceUrl = config.url;
 
-    proceduralChildren.forEach(child => root.remove(child));
-    proceduralChildren.forEach(disposeObject);
+    const oldChildren = [...root.children];
+    oldChildren.forEach(child => root.remove(child));
+    oldChildren.forEach(disposeObject);
     root.add(model);
     root.userData.realisticAssetLoaded = true;
     root.userData.realisticAssetUrl = config.url;
     root.updateMatrixWorld(true);
-    refreshSafetyEnvelope(root, config);
+
     hydratedRoots.add(root);
-    console.info(`[OR assets] READY ${config.rootName}`);
-    return true;
+    console.info(`[OR assets] READY ${config.rootName}`, root.uuid);
   } catch (error) {
-    proceduralChildren.forEach(child => { child.visible = true; });
     console.error(`[OR assets] FAILED ${config.rootName}`, error);
-    return false;
-  } finally {
-    loadingRoots.delete(root);
   }
 };
 
-const findEquipmentGroups = scene => {
-  const found = [];
-  const direct = scene?.getObjectByName?.(EQUIPMENT_GROUP_NAME);
-  if (direct?.isGroup) found.push(direct);
+const hydrateGroup = equipmentGroup => {
+  if (!equipmentGroup?.isGroup) return;
+  capturedEquipmentGroups.add(equipmentGroup);
+  window.__carmOperatingRoomEquipment = equipmentGroup;
+  window.__carmOperatingRoomEquipmentGroups = capturedEquipmentGroups;
 
-  scene?.traverse?.(object => {
-    if (!object?.isGroup) return;
-    if (object.name === EQUIPMENT_GROUP_NAME || object.userData?.operatingRoomEnvironment) found.push(object);
+  ASSETS.forEach(config => {
+    const root = equipmentGroup.getObjectByName(config.rootName);
+    if (root && !root.userData.realisticAssetLoaded) replaceProceduralChildren(root, config);
   });
-
-  return [...new Set(found)].filter(group => group?.parent);
 };
 
-const captureSceneGroups = scene => {
-  // Do not identify the simulator scene by background colour. Other runtime
-  // layers may change/replace Scene.background. The OR equipment layer itself
-  // is the authoritative marker for the scene we need.
-  const groups = findEquipmentGroups(scene);
-  if (!groups.length) return;
-
-  groups.forEach(group => capturedGroups.add(group));
-  [...capturedGroups].forEach(group => {
-    if (!group?.parent) capturedGroups.delete(group);
+const hydrateAll = () => {
+  [...capturedEquipmentGroups].forEach(group => {
+    if (!group?.isGroup) capturedEquipmentGroups.delete(group);
+    else hydrateGroup(group);
   });
-
-  const first = groups[0] || [...capturedGroups][0] || null;
-  if (first) {
-    window.__carmOperatingRoomEquipment = first;
-    window.__carmOperatingRoomEquipmentGroups = capturedGroups;
-  }
-
-  if (!discoveryLogged) {
-    discoveryLogged = true;
-    console.info('[OR assets] FOUND operating-room equipment layer', {
-      groups: groups.length,
-      roots: ASSETS.map(config => ({
-        name: config.rootName,
-        found: Boolean(first?.getObjectByName?.(config.rootName)),
-      })),
-    });
-  }
-};
-
-const runHydrationQueue = async () => {
-  if (queueRunning) return;
-  queueRunning = true;
-  try {
-    for (const config of ASSETS) {
-      for (const group of [...capturedGroups]) {
-        if (!group?.parent) continue;
-        const root = group.getObjectByName(config.rootName);
-        if (!root) {
-          console.warn(`[OR assets] root not found: ${config.rootName}`);
-          continue;
-        }
-        await loadIntoRoot(root, config);
-      }
-    }
-  } finally {
-    queueRunning = false;
-  }
+  if (window.__carmOperatingRoomEquipment?.isGroup) hydrateGroup(window.__carmOperatingRoomEquipment);
 };
 
 export const installRealisticOperatingRoomAssets = () => {
   if (installed || typeof window === 'undefined') return;
   installed = true;
-  console.info('[OR assets] content-based scene discovery installer active');
+  console.info('[OR assets] installer active');
 
-  previousRender = THREE.WebGLRenderer.prototype.render;
-  THREE.WebGLRenderer.prototype.render = function realisticOrRenderCapture(scene, camera) {
-    captureSceneGroups(scene);
-    if (capturedGroups.size) void runHydrationQueue();
-    return previousRender.call(this, scene, camera);
+  const originalAdd = THREE.Object3D.prototype.add;
+  THREE.Object3D.prototype.add = function realisticOrCaptureAdd(...objects) {
+    const result = originalAdd.apply(this, objects);
+
+    if (this?.name === EQUIPMENT_GROUP_NAME) {
+      capturedEquipmentGroups.add(this);
+      window.__carmOperatingRoomEquipment = this;
+      window.__carmOperatingRoomEquipmentGroups = capturedEquipmentGroups;
+      queueMicrotask(() => hydrateGroup(this));
+    }
+
+    for (const object of objects) {
+      if (object?.name === EQUIPMENT_GROUP_NAME) {
+        capturedEquipmentGroups.add(object);
+        window.__carmOperatingRoomEquipment = object;
+        window.__carmOperatingRoomEquipmentGroups = capturedEquipmentGroups;
+        queueMicrotask(() => hydrateGroup(object));
+      }
+    }
+    return result;
   };
+
+  timer = window.setInterval(hydrateAll, 500);
+
+  window.addEventListener('beforeunload', () => {
+    if (timer) window.clearInterval(timer);
+  }, { once: true });
 };
 
 installRealisticOperatingRoomAssets();
