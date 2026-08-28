@@ -13,8 +13,9 @@ const ASSETS = [
 const loader = new GLTFLoader();
 loader.setMeshoptDecoder(MeshoptDecoder);
 
-const loading = new Set();
-const loaded = new Set();
+const loadingRoots = new WeakSet();
+const hydratedRoots = new WeakSet();
+const capturedEquipmentGroups = new Set();
 let installed = false;
 let timer = null;
 
@@ -56,11 +57,11 @@ const prepareModel = (model, targetHeightM) => {
 };
 
 const replaceProceduralChildren = async (root, config) => {
-  if (!root || loading.has(config.rootName) || loaded.has(config.rootName)) return;
-  loading.add(config.rootName);
+  if (!root || loadingRoots.has(root) || hydratedRoots.has(root) || root.userData.realisticAssetLoaded) return;
+  loadingRoots.add(root);
 
   try {
-    console.info(`[OR assets] Loading ${config.url}`);
+    console.info(`[OR assets] Loading ${config.url} into ${config.rootName}`, root.uuid);
     const gltf = await loader.loadAsync(config.url);
     const model = prepareModel(gltf.scene, config.targetHeightM);
     model.name = `${config.rootName}_realistic_glb`;
@@ -75,24 +76,31 @@ const replaceProceduralChildren = async (root, config) => {
     root.userData.realisticAssetUrl = config.url;
     root.updateMatrixWorld(true);
 
-    loaded.add(config.rootName);
-    console.info(`[OR assets] READY ${config.rootName}`);
+    hydratedRoots.add(root);
+    console.info(`[OR assets] READY ${config.rootName}`, root.uuid);
   } catch (error) {
     console.error(`[OR assets] FAILED ${config.rootName}`, error);
-  } finally {
-    loading.delete(config.rootName);
   }
 };
 
 const hydrateGroup = equipmentGroup => {
   if (!equipmentGroup?.isGroup) return;
+  capturedEquipmentGroups.add(equipmentGroup);
+  window.__carmOperatingRoomEquipment = equipmentGroup;
+
   ASSETS.forEach(config => {
     const root = equipmentGroup.getObjectByName(config.rootName);
     if (root && !root.userData.realisticAssetLoaded) replaceProceduralChildren(root, config);
   });
 };
 
-const hydrate = () => hydrateGroup(window.__carmOperatingRoomEquipment);
+const hydrateAll = () => {
+  [...capturedEquipmentGroups].forEach(group => {
+    if (!group?.isGroup) capturedEquipmentGroups.delete(group);
+    else hydrateGroup(group);
+  });
+  if (window.__carmOperatingRoomEquipment?.isGroup) hydrateGroup(window.__carmOperatingRoomEquipment);
+};
 
 export const installRealisticOperatingRoomAssets = () => {
   if (installed || typeof window === 'undefined') return;
@@ -103,17 +111,15 @@ export const installRealisticOperatingRoomAssets = () => {
   THREE.Object3D.prototype.add = function realisticOrCaptureAdd(...objects) {
     const result = originalAdd.apply(this, objects);
 
-    // Important: operatingRoomRuntime stores the original Scene.add before this
-    // module installs, so watching the scene attachment alone can be bypassed.
-    // The equipment layer itself still calls Group.add when its children are
-    // attached, which gives us a reliable capture point.
     if (this?.name === EQUIPMENT_GROUP_NAME) {
+      capturedEquipmentGroups.add(this);
       window.__carmOperatingRoomEquipment = this;
       queueMicrotask(() => hydrateGroup(this));
     }
 
     for (const object of objects) {
       if (object?.name === EQUIPMENT_GROUP_NAME) {
+        capturedEquipmentGroups.add(object);
         window.__carmOperatingRoomEquipment = object;
         queueMicrotask(() => hydrateGroup(object));
       }
@@ -121,21 +127,14 @@ export const installRealisticOperatingRoomAssets = () => {
     return result;
   };
 
-  timer = window.setInterval(() => {
-    hydrate();
-    if (loaded.size === ASSETS.length) {
-      window.clearInterval(timer);
-      timer = null;
-    }
-  }, 250);
+  // Do not stop after the first three successful loads. In development,
+  // React StrictMode / scene recreation can create a second live OR layer.
+  // Each root object must be hydrated independently.
+  timer = window.setInterval(hydrateAll, 500);
 
-  window.setTimeout(() => {
-    if (timer) {
-      window.clearInterval(timer);
-      timer = null;
-    }
-    hydrate();
-  }, 30000);
+  window.addEventListener('beforeunload', () => {
+    if (timer) window.clearInterval(timer);
+  }, { once: true });
 };
 
 installRealisticOperatingRoomAssets();
