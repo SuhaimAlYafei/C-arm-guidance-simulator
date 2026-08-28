@@ -1,96 +1,114 @@
-# AI-Guided C-Arm Positioning Simulator V2
+# AI-Guided C-Arm Positioning Simulator V3
 
 <p align="center">
-  <strong>A research-grade digital-twin platform for anatomy-aware C-arm positioning, geometry verification, waypoint planning, deterministic reference radiography, and AI-assisted simulator guidance.</strong>
+  <strong>Collision-Aware Digital Twin Planning for Safe and Repeatable C-Arm Positioning in Simulated Clinical Environments</strong>
 </p>
 
 <p align="center">
-  <a href="https://c-armsim.com"><strong>Open the Live V2 Simulator</strong></a>
-  ·
-  <a href="docs/Home.md"><strong>Documentation</strong></a>
-  ·
-  <a href="docs/ARCHITECTURE.md">Architecture</a>
-  ·
-  <a href="docs/RESEARCH_FOUNDATION.md">Research Foundation</a>
-  ·
-  <a href="docs/RESEARCH_LIMITATIONS.md">Research Status</a>
+  A browser-based research simulator combining anatomy-aware C-arm positioning, verified scene geometry, collision-aware trajectory planning, a movable simulated operating-room environment, reference radiography, and AI-assisted simulator guidance.
 </p>
 
 <p align="center">
-  <img alt="V2" src="https://img.shields.io/badge/Release-V2-2563EB">
+  <a href="https://c-armsim.com"><strong>Open the Live V3 Simulator</strong></a>
+  · <a href="docs/Home.md"><strong>Documentation</strong></a>
+  · <a href="docs/ARCHITECTURE.md">Architecture</a>
+  · <a href="docs/RESEARCH_FOUNDATION.md">Research Foundation</a>
+  · <a href="docs/RESEARCH_LIMITATIONS.md">Research Status</a>
+</p>
+
+<p align="center">
+  <img alt="V3" src="https://img.shields.io/badge/Release-V3-2563EB">
   <img alt="Firebase Hosting" src="https://img.shields.io/badge/Hosting-Firebase-FFCA28?logo=firebase&logoColor=black">
   <img alt="Gemini" src="https://img.shields.io/badge/AI-Gemini-4285F4?logo=google&logoColor=white">
-  <img alt="App Check" src="https://img.shields.io/badge/Security-App%20Check-FFCA28?logo=firebase&logoColor=black">
   <img alt="React" src="https://img.shields.io/badge/Frontend-React-20232A?logo=react&logoColor=61DAFB">
   <img alt="Three.js" src="https://img.shields.io/badge/3D-Three.js-black?logo=threedotjs&logoColor=white">
   <img alt="FastAPI" src="https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white">
-  <img alt="Render" src="https://img.shields.io/badge/Planner-Render-46E3B7?logo=render&logoColor=black">
   <img alt="MIT License" src="https://img.shields.io/badge/Code%20License-MIT-yellow.svg">
 </p>
 
 ---
 
-## Live V2
+## Live V3
 
 **Canonical website:** https://c-armsim.com  
 **Firebase fallback:** https://c-arm-guidance-simulator.web.app
 
-The `main` branch is the current V2 codebase and is the source of truth for the public simulator.
+V3 is publicly deployed. Active V3 development is maintained on the `v3-collision-safety` branch.
 
-> **Research simulator only.** This software is not a medical device, is not clinically validated, and must not be used for diagnosis, treatment, patient positioning, radiation control, or unsupervised operation of medical equipment.
+> **Research and educational simulator only.** This software is not a medical device, is not clinically validated, and must not be used for diagnosis, treatment, patient positioning, radiation control, or unsupervised operation of medical equipment.
 
 ---
 
-## What V2 Does
+## V3 Research Focus
 
-The simulator combines a browser-based Three.js digital twin with anatomy registration, scene-derived C-arm geometry, waypoint planning, verified arrival state, reference-radiograph display, and an embedded Gemini simulator copilot.
+**Research question:**
 
-### Core capabilities
+> Can a collision-aware digital twin automatically generate geometrically valid C-arm trajectories to anatomical imaging targets while avoiding the patient and simulated operating-room obstacles?
+
+V3 extends the positioning simulator from target-pose planning into environment-aware trajectory planning. The simulator models operating-room obstacles and evaluates planned motion against software collision proxies while preserving the existing geometry-verification pipeline.
+
+Collision and clearance results are **simulation outputs**, not guarantees of real-world physical clearance or clinical safety.
+
+---
+
+## What V3 Adds
+
+### Collision-aware operating-room simulation
+
+- Simulated operating-room equipment and staff
+- Real GLB assets for the IV pole, surgeon, and scrub nurse
+- Direct X/Y/Z translation and rotation controls for selected OR objects
+- Deterministic environment randomization and repeat/reset controls
+- Safety-zone visualization
+- CLEAR / WARNING / COLLISION simulator states
+- Minimum-clearance reporting
+- Collision-aware path checking and rerouting
+- Layout-change invalidation requiring a new path preview
+- Hard-limit-aware C-arm planning
+
+### Core positioning capabilities retained
 
 - Interactive React + Three.js C-arm digital twin
 - Procedure, body-region, anatomy, landmark, and projection workflow
-- Built-in default registration with **17 anatomical landmarks (LM0-LM16)**
-- Saved calibration persistence plus registration import/export
-- Dedicated medical patient GLB for simulator visualization
-- Scene-derived final-pose solving
+- Built-in LM0-LM16 patient registration
+- Scene-derived target-pose solving
 - Central-ray and isocenter verification
-- Waypoint preview and animated C-arm movement
-- ARRIVED-state pose and geometry checks
-- Planner confidence and human-readable explanations
-- Deterministic reference X-rays for supported anatomy/projection mappings
-- Explicit unsupported-view handling rather than fabricating a radiograph
-- Gemini Guidance with live simulator context
-- Firebase Hosting, App Check, and reCAPTCHA Enterprise
-- Render-hosted FastAPI planning backend
-- Arduino / physical-prototype integration hooks
+- Waypoint preview and animated movement
+- ARRIVED-state pose and geometry verification
+- Planner confidence and explanation output
+- Deterministic reference X-rays for supported mappings
+- Explicit NO REFERENCE IMAGE behavior for unsupported mappings
+- Gemini Guidance using live simulator context
+- Firebase Hosting and App Check
+- Render-hosted FastAPI planning service
 
 ---
 
-## End-to-End Workflow
+## V3 Workflow
 
 ```text
 Imaging request
       |
       v
-Procedure + body region
+Anatomy + landmark + projection
       |
       v
-Anatomical landmark + projection
+Current digital-twin / OR layout
       |
       v
 PREVIEW PATH
       |
-      v
-Scene-derived target pose
+      +--> derive target pose
+      +--> verify scene geometry
+      +--> evaluate hard limits
+      +--> evaluate simulated obstacles
       |
       v
-Geometry verification
+Collision-aware waypoint plan
       |
-      v
-POST /plan -> Render FastAPI
+      +--> direct route clear --> use route
       |
-      v
-Waypoint plan
+      +--> direct-route conflict --> reroute / reject
       |
       v
 MOVE C-ARM
@@ -104,16 +122,136 @@ Arrival verification
       v
 EXPOSE X-RAY
       |
-      +--> supported mapping --> deterministic reference radiograph
-      |
+      +--> supported mapping --> reference radiograph
       +--> unsupported mapping --> NO REFERENCE IMAGE
 ```
 
-See [`docs/SIMULATOR_WORKFLOW.md`](docs/SIMULATOR_WORKFLOW.md).
+Changing an OR object after a trajectory is planned marks the layout dirty and requires **PREVIEW PATH** again before relying on that plan.
 
 ---
 
-## V2 Architecture
+## Operating-Room Safety Layer
+
+The V3 OR Safety interface is intentionally focused on the core experiment rather than adding large numbers of unrelated controls.
+
+The user can select supported simulated OR objects and move them directly in the environment. The collision layer evaluates the current layout and planned C-arm path using software geometry proxies.
+
+Reported values can include:
+
+- environment state
+- selected transform root
+- live collision status
+- minimum simulated clearance
+- path status
+- checked waypoints
+- whether the OR layout has changed since the last preview
+
+The safety bubbles and segmented patient/table proxies are engineering approximations for simulator collision testing. They are not measured physical safety envelopes.
+
+---
+
+## Geometry Verification
+
+The frontend evaluates the live Three.js geometry before accepting a planned final pose. Arrival verification can report:
+
+- current and planned C-arm pose
+- position residual
+- angular residual
+- geometry-verification state
+- isocenter error
+- central-ray error
+- planner confidence
+- solver mode and explanation
+
+The current **1 mm internal scene-geometry criterion** is an engineering criterion inside the simulator. It is **not physical or clinical positioning accuracy**.
+
+Do not interpret planner confidence as accuracy. It is reported specifically as **planner confidence**.
+
+---
+
+## Internal Software Benchmarks
+
+### Fixed benchmark
+
+A reproducible 1,000-trial software benchmark using seed `23112` produced:
+
+- internal simulator success: **99.1%**
+- 9 failures associated with position residual after a Y-axis hard-limit clamp
+- median position error: **0 mm**
+- mean position error: **0.092631 mm**
+- 95th percentile: **0 mm**
+- 99th percentile: **0.003464 mm**
+- maximum: **16.321717 mm**
+- angular residuals: **0°** in this benchmark
+- mean planner confidence: **93.124%**
+
+### Workspace benchmark
+
+A reproducible 5,000-trial software workspace benchmark using seed `23112` included:
+
+| Test region | Trials | Result |
+|---|---:|---|
+| Nominal reachable | 3,393 | 100% internal feasible success; 100% hard-limit compliance; max residual 0 mm |
+| Near-limit | 669 | 100% internal feasible success; 100% hard-limit compliance; max residual 0 mm |
+| Outside workspace | 938 | 100% hard-limit compliance; median residual 43.996963 mm; max 165.213903 mm |
+
+The outside-workspace cases are **stress/limit-handling cases**, not normal positioning failures.
+
+> In a reproducible 5,000-trial software benchmark, all nominal reachable and near-limit feasible targets were solved within the internal simulator criterion, and all outside-workspace stress cases respected the configured hard mechanical limits. These are software-only internal results, not physical or clinical accuracy.
+
+---
+
+## Anatomy Classification Development
+
+The research codebase also contains anatomy-classification development using a ConvNeXt Tiny 384 three-seed ensemble evaluated on the same patient-separated MURA development validation split.
+
+Development validation summary:
+
+- samples: **3,197**
+- accuracy: **97.3413%**
+- balanced accuracy: **96.5232%**
+- macro F1: **96.9128%**
+- mean confidence: **94.954%**
+- all three models agreed on **98.561%** of samples
+
+These are development-validation results, **not an untouched clinical test and not clinical validation**.
+
+The 41 reference simulator X-rays are a separate deterministic reference library and should not be interpreted as a 41-class training dataset.
+
+---
+
+## Reference X-rays
+
+Supported anatomy/projection combinations map to static reference images under:
+
+```text
+3DVisualizer/ciartic-app/public/reference_xrays/
+```
+
+When a supported mapping exists, the simulator displays the corresponding reference image and exposure metadata. Unsupported views explicitly return **NO REFERENCE IMAGE** / **NO VALIDATED REFERENCE** rather than fabricating an image.
+
+The reference radiographs are simulator references; they are not generated from the exact current C-arm pose and are not a clinically validated diagnostic dataset.
+
+---
+
+## Gemini Guidance
+
+The floating **Gemini Guidance** assistant receives structured simulator context such as:
+
+- requested anatomy and projection
+- current C-arm pose
+- planned final pose
+- planner confidence
+- path state
+- geometry-verification results
+- isocenter and central-ray error
+- exposure/reference-image state
+
+Gemini is constrained to explain the simulator state and research workflow. It is not clinical decision support and should not infer positioning correctness from labels alone.
+
+---
+
+## Architecture
 
 ```text
                          c-armsim.com
@@ -124,45 +262,141 @@ See [`docs/SIMULATOR_WORKFLOW.md`](docs/SIMULATOR_WORKFLOW.md).
                               v
                   React + Three.js Simulator
                               |
-          +-------------------+-------------------+
-          |                                       |
-          v                                       v
- Firebase App Check                       Firebase AI Logic
- reCAPTCHA Enterprise                          Gemini
-          |                                       |
-          +-------------------+-------------------+
-                              |
-                              v
-                  Render FastAPI Planner
-                         POST /plan
-                  - target pose handling
-                  - waypoint generation
-                  - confidence / explanation
-                  - geometry metadata
-
-Static V2 assets served by Firebase Hosting
-- medical patient GLB
-- default registration JSON
-- validated reference-image library
+        +---------------------+----------------------+
+        |                     |                      |
+        v                     v                      v
+ Scene Geometry       OR Collision Layer      Gemini Guidance
+        |                     |                      |
+        +----------+----------+                      |
+                   |                                 |
+                   v                                 |
+           Target / Path Request                     |
+                   |                                 |
+                   v                                 v
+             Render FastAPI                 Firebase AI Logic
+              POST /plan                         Gemini
+                   |
+                   v
+        Waypoints + planner metadata
+                   |
+                   v
+      Geometry + collision verification
 ```
 
-For implementation details, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Static production assets include the patient model, default registration, reference radiographs, and supported operating-room GLB assets.
 
 ---
 
-## Powered by Google Technology
+## Planning Service
 
-V2 uses Google technologies as key parts of the web application stack:
+Production endpoint:
 
-- **Firebase Hosting** for the production frontend
-- **Firebase App Check** for application attestation
-- **reCAPTCHA Enterprise** as the App Check provider
-- **Firebase AI Logic** for client-side generative-AI integration
-- **Gemini** for the embedded **Gemini Guidance** simulator-state copilot
+```text
+https://c-arm-guidance-simulator.onrender.com/plan
+```
 
-Gemini Guidance receives structured simulator state including the requested anatomy/projection, current C-arm pose, planned final pose, planner confidence, geometry-verification results, and latest exposure metadata. It is designed to explain the **simulation**, not provide clinical advice.
+Primary API:
 
-Google, Firebase, Gemini, and reCAPTCHA are trademarks of their respective owners. This project uses their technology but does not claim sponsorship, endorsement, or clinical validation by Google.
+```http
+POST /plan
+```
+
+The production planner handles target-pose/path requests and returns waypoint and planner metadata used by the frontend verification pipeline.
+
+---
+
+## Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Web UI | React, Vite, JavaScript |
+| Digital twin / 3D | Three.js |
+| OR assets | GLB / glTF, Meshopt decoding |
+| Hosting | Firebase Hosting |
+| Application protection | Firebase App Check, reCAPTCHA Enterprise |
+| Embedded AI | Firebase AI Logic, Gemini |
+| Planning API | FastAPI, Python, Uvicorn |
+| Planner deployment | Render |
+| Research ML | PyTorch, ConvNeXt, scientific Python |
+| Hardware research | Arduino / serial integration hooks |
+
+---
+
+## Repository Layout
+
+```text
+C-arm-guidance-simulator/
+├── 3DVisualizer/ciartic-app/
+│   ├── src/App.jsx
+│   ├── src/components/
+│   │   ├── OperatingRoomSafetyPanel.js
+│   │   └── GeminiAssistant.jsx
+│   ├── src/scene/
+│   │   ├── collisionAwarePlanner.js
+│   │   ├── operatingRoomRuntime.js
+│   │   ├── operatingRoomTransformController.js
+│   │   ├── operatingRoomCollisionPolicy.js
+│   │   └── realisticOperatingRoomAssets.js
+│   ├── src/safety/
+│   │   ├── collisionSafety.js
+│   │   └── sceneSafetyObjects.js
+│   ├── src/firebase/
+│   └── public/
+│       ├── medical_patient/
+│       ├── operating_room/
+│       ├── reference_xrays/
+│       └── default_patient_registration.json
+├── python/bridge/
+├── docs/
+├── AI/
+├── training/
+├── evaluation/
+├── data/
+├── results/
+├── Printed prototype/
+├── ACKNOWLEDGEMENTS.md
+├── CITATION.cff
+├── THIRD_PARTY_NOTICES.md
+└── README.md
+```
+
+---
+
+## Run Locally
+
+```bash
+git clone https://github.com/SuhaimAlYafei/C-arm-guidance-simulator.git
+cd C-arm-guidance-simulator
+git checkout v3-collision-safety
+cd 3DVisualizer/ciartic-app
+npm install
+npm run dev
+```
+
+Research tests:
+
+```bash
+npm run test:research
+```
+
+Production build:
+
+```bash
+npm run build
+```
+
+Planner tests on Windows from the repository root:
+
+```powershell
+$env:PYTHONPATH="python"
+py -m unittest bridge.planner.test_path_planner -v
+```
+
+Firebase deployment:
+
+```bash
+firebase deploy --only hosting
+```
 
 ---
 
@@ -176,198 +410,58 @@ A central research foundation is:
 > *Automated C-Arm Positioning via Conformal Landmark Localization.*  
 > IEEE/CVF International Conference on Computer Vision Workshops (ICCVW), Advanced Perception for Autonomous Healthcare (APAH), 2025.
 
-- Official research implementation: https://github.com/AhmadArrabi/C_arm_guidance_APAH
-- ICCV Open Access paper: https://openaccess.thecvf.com/content/ICCV2025W/APAH/html/Arrabi_Automated_C-Arm_Positioning_via_Conformal_Landmark_Localization_ICCVW_2025_paper.html
-- Related earlier work: *C-arm Guidance: A Self-supervised Approach to Automated Positioning During Stroke Thrombectomy*
+- Research repository: https://github.com/AhmadArrabi/C_arm_guidance_APAH
+- Paper: https://openaccess.thecvf.com/content/ICCV2025W/APAH/html/Arrabi_Automated_C-Arm_Positioning_via_Conformal_Landmark_Localization_ICCVW_2025_paper.html
+- arXiv: https://arxiv.org/abs/2510.16160
 
-The original Arrabi research introduced automated C-arm positioning through learned anatomical landmark localization and uncertainty-aware/conformal methods. This repository extends the broader research direction into an interactive V2 digital-twin environment with scene geometry, web-based path planning, registration/calibration tooling, reference-image workflows, hardware integration hooks, Firebase deployment, and Gemini-assisted simulator interpretation.
+This simulator is an **independent extension** of that research direction and should not be described as the official implementation of the paper. Credit for the underlying research and upstream work remains with the original authors.
 
-**Credit for the underlying research ideas and original implementation remains with Ahmad Arrabi and the respective co-authors.** See [`docs/RESEARCH_FOUNDATION.md`](docs/RESEARCH_FOUNDATION.md) and [`ACKNOWLEDGEMENTS.md`](ACKNOWLEDGEMENTS.md).
-
----
-
-## Default Patient Registration
-
-V2 bundles:
-
-```text
-3DVisualizer/ciartic-app/public/default_patient_registration.json
-```
-
-Startup behavior:
-
-1. restore a locally saved registration if one exists
-2. otherwise load the bundled default registration
-3. allow later recalibration, import, export, and local persistence
-
-The baseline contains **LM0-LM16** anatomical targets.
+See [`docs/RESEARCH_FOUNDATION.md`](docs/RESEARCH_FOUNDATION.md) and [`ACKNOWLEDGEMENTS.md`](ACKNOWLEDGEMENTS.md).
 
 ---
 
-## Geometry Verification
+## Current Research Status and Limitations
 
-The frontend evaluates the live Three.js scene before accepting a planned pose. It can report:
+### Implemented in software
 
-- current and planned C-arm pose
-- per-axis pose residuals
-- geometry-verification state
-- isocenter error
-- central-ray error
-- planner confidence
-- solver mode and explanation
-
-The current **1 mm internal scene-geometry acceptance threshold** is an engineering constraint inside the simulation. It is **not demonstrated physical or clinical positioning accuracy**.
-
----
-
-## Reference X-rays
-
-Supported anatomy/projection combinations map to static reference images under:
-
-```text
-3DVisualizer/ciartic-app/public/reference_xrays/
-```
-
-The library includes head/neck, torso, upper-extremity, and lower-extremity examples with AP, lateral, and selected oblique/axillary views.
-
-Unsupported combinations are explicitly identified instead of being represented by an unconstrained generated image. These images are simulator assets and are not a clinically validated diagnostic dataset.
-
----
-
-## Gemini Guidance
-
-The embedded assistant is mounted in the V2 frontend as a floating **Gemini Guidance** panel. Its role is to explain current simulator state, for example:
-
-- requested anatomy and projection
-- whether a path exists
-- current vs planned final C-arm pose
-- geometry-verification results
-- isocenter and central-ray error
-- whether the simulated trajectory reached the stored final pose
-- latest exposure/reference-image status
-
-It is explicitly constrained to research/simulation interpretation and is not clinical decision support.
-
----
-
-## Planning Service
-
-Production planner:
-
-```text
-https://c-arm-guidance-simulator.onrender.com/plan
-```
-
-Primary endpoint:
-
-```http
-POST /plan
-```
-
-The Render-hosted FastAPI service handles path generation, confidence/explanation output, and geometry metadata for V2.
-
-Experimental DiffDRR and imaging-service code remains in the repository for research development, while supported V2 reference exposures are resolved from frontend static assets.
-
----
-
-## Technology Stack
-
-| Layer | Technology |
-|---|---|
-| Web UI | React, Vite, JavaScript |
-| 3D / digital twin | Three.js |
-| Hosting | Firebase Hosting |
-| Application protection | Firebase App Check, reCAPTCHA Enterprise |
-| Embedded AI | Firebase AI Logic, Gemini |
-| Planning API | FastAPI, Python, Uvicorn |
-| Planner deployment | Render |
-| Research tooling | PyTorch, DiffDRR-related development, scientific Python, medical-imaging and geometry utilities |
-| Hardware development | Arduino / serial integration hooks |
-
----
-
-## Repository Layout
-
-```text
-C-arm-guidance-simulator/
-├── 3DVisualizer/ciartic-app/        # Production V2 web simulator
-│   ├── src/App.jsx                  # Main digital-twin application
-│   ├── src/components/              # UI, controls, Gemini Guidance
-│   ├── src/firebase/                # Firebase + App Check + AI initialization
-│   └── public/                      # registration, patient model, reference images
-├── python/bridge/                   # FastAPI planner and research bridge code
-├── docs/                            # Technical and research documentation
-├── AI/                              # AI/inference development assets
-├── training/                        # Model-training utilities
-├── evaluation/                      # Evaluation utilities
-├── data/                            # Research datasets / prepared data
-├── results/                         # Experimental outputs
-├── Printed prototype/               # Physical-prototype assets
-├── ACKNOWLEDGEMENTS.md
-├── CITATION.cff
-├── THIRD_PARTY_NOTICES.md
-└── README.md
-```
-
----
-
-## Run Locally
-
-```bash
-git clone https://github.com/SuhaimAlYafei/C-arm-guidance-simulator.git
-cd C-arm-guidance-simulator/3DVisualizer/ciartic-app
-npm install
-npm run dev
-```
-
-Production build:
-
-```bash
-npm run build
-```
-
-Firebase deployment:
-
-```bash
-firebase deploy --only hosting
-```
-
-See [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md).
-
----
-
-## Research Status
-
-### Implemented
-
-- interactive 3D C-arm simulation
+- interactive 3D C-arm digital twin
 - anatomy-aware target selection
-- default registered landmarks
-- calibration persistence and import/export
-- scene-derived final-pose solving
+- patient landmark registration
+- scene-derived target-pose solving
 - waypoint planning and playback
 - central-ray and isocenter verification
 - arrival verification
-- planner confidence and explanation output
-- deterministic reference radiographs
-- Firebase Hosting and App Check
-- Gemini Guidance
-- Render-hosted planning backend
-- Arduino / prototype integration hooks
+- movable simulated OR obstacles
+- collision proxies and safety bubbles
+- collision-aware trajectory checking/rerouting
+- deterministic OR randomization/repeat/reset controls
+- reference-radiograph workflow
+- Gemini simulator guidance
+- Firebase production deployment
+- Render planning backend
 
-### Requires further validation
+### Still requires independent validation
 
 - physical C-arm positioning accuracy
+- real-world obstacle geometry and clearance
 - physical landmark-registration error
 - hardware-in-the-loop repeatability
-- collision safety in real environments
+- collision safety on actual equipment
 - clinician comparison studies
-- uncertainty calibration under real procedural conditions
-- radiation-dose and workflow studies
+- uncertainty calibration in real procedures
+- radiation-dose/workflow outcomes
 - diagnostic performance
 - regulatory and safety evaluation
 
-No claim of clinical accuracy, radiation reduction, diagnostic performance, or autonomous medical-device capability should be inferred from the current simulator.
+No claim of clinical accuracy, physical collision avoidance, radiation reduction, diagnostic performance, or autonomous medical-device capability should be inferred from V3.
+
+---
+
+## Public Asset and Attribution Note
+
+Third-party models, datasets, radiographs, textures, and other external assets can carry licenses or redistribution requirements separate from this repository's code license. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
+Before redistributing externally sourced OR GLB assets, their exact source URLs and license terms should be verified and documented. Inclusion in the simulator does not by itself establish redistribution rights.
 
 ---
 
@@ -385,26 +479,10 @@ No claim of clinical accuracy, radiation reduction, diagnostic performance, or a
 
 ---
 
-## Acknowledgements
+## License
 
-V2 is made possible by a combination of open research and modern cloud tooling. Particular thanks and credit go to:
+Original repository software is distributed under the MIT License with preserved contributor notices in [`LICENSE`](LICENSE).
 
-- **Ahmad Arrabi and co-authors** for foundational C-arm guidance and conformal landmark-localization research
-- **Google Firebase** for hosting, application protection, and AI integration infrastructure
-- **Google Gemini** for the Gemini Guidance simulator-state assistant
-- the open-source communities behind React, Three.js, FastAPI, PyTorch, and related scientific tooling
-- mentors, clinicians, educators, and collaborators supporting the broader research effort
+Third-party assets and research materials may have separate terms. The cited Arrabi research and upstream implementation remain the work of their original authors. Google/Firebase/Gemini technologies are technology dependencies and their use does not imply endorsement.
 
-See [`ACKNOWLEDGEMENTS.md`](ACKNOWLEDGEMENTS.md) for full attribution.
-
----
-
-## License and Attribution
-
-Original repository software is distributed under the MIT License. Copyright notices for original contributors are preserved in [`LICENSE`](LICENSE).
-
-Third-party datasets, radiographs, models, textures, and other externally sourced assets may have separate licenses or redistribution requirements. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
-
-The Arrabi research papers and upstream code remain the work of their original authors and are cited for scholarly attribution. Google technologies are credited as technology dependencies; their inclusion does not imply endorsement.
-
-No repository license should be interpreted as granting clinical approval or medical-device certification.
+No repository license or simulator result should be interpreted as medical-device approval or clinical certification.
