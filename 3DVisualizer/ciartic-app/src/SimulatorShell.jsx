@@ -4,6 +4,7 @@ import GeminiAssistant from './components/GeminiAssistant.jsx';
 import ResearchControlDock from './components/ResearchControlDock.jsx';
 import AwardStudyPanel from './components/AwardStudyPanel.jsx';
 import './scene/orDragOverride.js';
+import './scene/realisticOperatingRoomAssets.js';
 
 const parseNumber = (value) => {
   const parsed = Number(value);
