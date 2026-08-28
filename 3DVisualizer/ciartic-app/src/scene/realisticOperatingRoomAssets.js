@@ -2,28 +2,12 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
-const MAIN_SCENE_BACKGROUND = 0xeef2f5;
 const EQUIPMENT_GROUP_NAME = 'operating_room_equipment_layer';
 
 const ASSETS = [
-  {
-    rootName: 'or_iv_pole',
-    url: '/operating_room/iv_pole.glb',
-    targetHeightM: 1.9,
-    rotationY: 0,
-  },
-  {
-    rootName: 'or_surgeon',
-    url: '/operating_room/surgeon.glb',
-    targetHeightM: 1.72,
-    rotationY: 0,
-  },
-  {
-    rootName: 'or_scrub_nurse',
-    url: '/operating_room/scrub_nurse.glb',
-    targetHeightM: 1.68,
-    rotationY: 0,
-  },
+  { rootName: 'or_iv_pole', url: '/operating_room/iv_pole.glb', targetHeightM: 1.9 },
+  { rootName: 'or_surgeon', url: '/operating_room/surgeon.glb', targetHeightM: 1.72 },
+  { rootName: 'or_scrub_nurse', url: '/operating_room/scrub_nurse.glb', targetHeightM: 1.68 },
 ];
 
 const loader = new GLTFLoader();
@@ -32,59 +16,43 @@ loader.setMeshoptDecoder(MeshoptDecoder);
 const loading = new Set();
 const loaded = new Set();
 let installed = false;
-let originalRender = null;
-
-const isMainSimulatorScene = scene => (
-  scene?.background?.isColor
-  && scene.background.getHex() === MAIN_SCENE_BACKGROUND
-);
+let timer = null;
 
 const disposeObject = object => {
   object?.traverse?.(child => {
     if (!child?.isMesh) return;
     child.geometry?.dispose?.();
-    if (Array.isArray(child.material)) {
-      child.material.forEach(material => material?.dispose?.());
-    } else {
-      child.material?.dispose?.();
-    }
+    if (Array.isArray(child.material)) child.material.forEach(m => m?.dispose?.());
+    else child.material?.dispose?.();
   });
 };
 
-const prepareModel = (scene, targetHeightM) => {
-  scene.updateMatrixWorld(true);
+const prepareModel = (model, targetHeightM) => {
+  model.position.set(0, 0, 0);
+  model.rotation.set(0, 0, 0);
+  model.scale.set(1, 1, 1);
+  model.updateMatrixWorld(true);
 
-  const firstBox = new THREE.Box3().setFromObject(scene);
-  const firstSize = new THREE.Vector3();
-  firstBox.getSize(firstSize);
+  const box = new THREE.Box3().setFromObject(model);
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  if (!Number.isFinite(size.y) || size.y <= 1e-6) throw new Error('Model has no measurable height.');
 
-  if (!Number.isFinite(firstSize.y) || firstSize.y <= 1e-6) {
-    throw new Error('Model has no measurable height.');
-  }
+  model.scale.setScalar(targetHeightM / size.y);
+  model.updateMatrixWorld(true);
 
-  const scale = targetHeightM / firstSize.y;
-  scene.scale.multiplyScalar(scale);
-  scene.updateMatrixWorld(true);
-
-  const scaledBox = new THREE.Box3().setFromObject(scene);
+  const scaledBox = new THREE.Box3().setFromObject(model);
   const center = new THREE.Vector3();
   scaledBox.getCenter(center);
+  model.position.set(-center.x, -scaledBox.min.y, -center.z);
 
-  // Normalize the imported model around its local origin and place its lowest
-  // point on the OR floor. The wrapper group remains the draggable/collision ID.
-  scene.position.x -= center.x;
-  scene.position.z -= center.z;
-  scene.position.y -= scaledBox.min.y;
-
-  scene.traverse(object => {
+  model.traverse(object => {
     if (!object.isMesh) return;
     object.castShadow = true;
     object.receiveShadow = true;
-    object.frustumCulled = true;
   });
-
-  scene.updateMatrixWorld(true);
-  return scene;
+  model.updateMatrixWorld(true);
+  return model;
 };
 
 const replaceProceduralChildren = async (root, config) => {
@@ -92,43 +60,55 @@ const replaceProceduralChildren = async (root, config) => {
   loading.add(config.rootName);
 
   try {
+    console.info(`[OR assets] Loading ${config.url}`);
     const gltf = await loader.loadAsync(config.url);
     const model = prepareModel(gltf.scene, config.targetHeightM);
     model.name = `${config.rootName}_realistic_glb`;
-    model.rotation.y += config.rotationY || 0;
     model.userData.realisticOperatingRoomAsset = true;
     model.userData.sourceUrl = config.url;
 
-    // Keep the existing wrapper root and its world placement. This preserves
-    // the IDs expected by OR dragging, scenario presets, and collision code.
     const oldChildren = [...root.children];
     oldChildren.forEach(child => root.remove(child));
     oldChildren.forEach(disposeObject);
-
     root.add(model);
     root.userData.realisticAssetLoaded = true;
     root.userData.realisticAssetUrl = config.url;
     root.updateMatrixWorld(true);
 
     loaded.add(config.rootName);
-    console.info(`[OR assets] Loaded ${config.rootName} from ${config.url}`);
+    console.info(`[OR assets] READY ${config.rootName}`);
   } catch (error) {
-    console.error(`[OR assets] Failed to load ${config.url}`, error);
+    console.error(`[OR assets] FAILED ${config.rootName}`, error);
   } finally {
     loading.delete(config.rootName);
   }
 };
 
-const hydrateScene = scene => {
-  if (!isMainSimulatorScene(scene)) return;
-  const equipmentGroup = scene.getObjectByName(EQUIPMENT_GROUP_NAME);
-  if (!equipmentGroup) return;
+const findEquipmentGroups = () => {
+  const groups = [];
+  const scenes = [];
 
-  ASSETS.forEach(config => {
-    const root = equipmentGroup.getObjectByName(config.rootName);
-    if (root && !root.userData.realisticAssetLoaded) {
-      replaceProceduralChildren(root, config);
-    }
+  // The OR runtime owns the group but not a public scene reference, so inspect
+  // the live Three.js objects reachable through renderers captured by the app.
+  if (window.__carmMainScene?.isScene) scenes.push(window.__carmMainScene);
+
+  // Fallback: the runtime's scene hook creates this named group. Object3D.add
+  // below captures it immediately, independent of renderer monkey-patch order.
+  if (window.__carmOperatingRoomEquipment?.isGroup) groups.push(window.__carmOperatingRoomEquipment);
+
+  scenes.forEach(scene => {
+    const group = scene.getObjectByName(EQUIPMENT_GROUP_NAME);
+    if (group) groups.push(group);
+  });
+  return [...new Set(groups)];
+};
+
+const hydrate = () => {
+  findEquipmentGroups().forEach(equipmentGroup => {
+    ASSETS.forEach(config => {
+      const root = equipmentGroup.getObjectByName(config.rootName);
+      if (root && !root.userData.realisticAssetLoaded) replaceProceduralChildren(root, config);
+    });
   });
 };
 
@@ -136,11 +116,35 @@ export const installRealisticOperatingRoomAssets = () => {
   if (installed || typeof window === 'undefined') return;
   installed = true;
 
-  originalRender = THREE.WebGLRenderer.prototype.render;
-  THREE.WebGLRenderer.prototype.render = function realisticOrAssetRender(scene, camera) {
-    hydrateScene(scene);
-    return originalRender.call(this, scene, camera);
+  const originalAdd = THREE.Object3D.prototype.add;
+  THREE.Object3D.prototype.add = function realisticOrCaptureAdd(...objects) {
+    const result = originalAdd.apply(this, objects);
+    for (const object of objects) {
+      if (object?.name === EQUIPMENT_GROUP_NAME) {
+        window.__carmOperatingRoomEquipment = object;
+        queueMicrotask(hydrate);
+      }
+    }
+    return result;
   };
+
+  // Retry briefly because the OR layer is created asynchronously relative to
+  // React/module initialization. Stop once all three assets are hydrated.
+  timer = window.setInterval(() => {
+    hydrate();
+    if (loaded.size === ASSETS.length) {
+      window.clearInterval(timer);
+      timer = null;
+    }
+  }, 250);
+
+  window.setTimeout(() => {
+    if (timer) {
+      window.clearInterval(timer);
+      timer = null;
+    }
+    hydrate();
+  }, 30000);
 };
 
 installRealisticOperatingRoomAssets();
