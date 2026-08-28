@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import App from './App.jsx';
 import GeminiAssistant from './components/GeminiAssistant.jsx';
-import ResearchControlDock from './components/ResearchControlDock.jsx';
-import AwardStudyPanel from './components/AwardStudyPanel.jsx';
+import OperatingRoomSafetyPanel from './components/OperatingRoomSafetyPanel.js';
 import './scene/orDragOverride.js';
 import './scene/realisticOperatingRoomAssets.js';
 import './scene/operatingRoomCollisionPolicy.js';
-import './scene/patientMotionCollisionBridge.js';
 
 const parseNumber = (value) => {
   const parsed = Number(value);
@@ -101,8 +99,7 @@ export default function SimulatorShell() {
   return (
     <>
       <App />
-      <ResearchControlDock />
-      <AwardStudyPanel simulatorContext={simulatorContext} />
+      <OperatingRoomSafetyPanel />
       <GeminiAssistant simulatorContext={simulatorContext} />
     </>
   );
