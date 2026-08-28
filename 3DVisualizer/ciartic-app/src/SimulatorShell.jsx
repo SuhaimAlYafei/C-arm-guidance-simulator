@@ -6,6 +6,7 @@ import AwardStudyPanel from './components/AwardStudyPanel.jsx';
 import './scene/orDragOverride.js';
 import './scene/realisticOperatingRoomAssets.js';
 import './scene/orTransformUiCompatibility.js';
+import './scene/operatingRoomCollisionPolicy.js';
 
 const parseNumber = (value) => {
   const parsed = Number(value);
