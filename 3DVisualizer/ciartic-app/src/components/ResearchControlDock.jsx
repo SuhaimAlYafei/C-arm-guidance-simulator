@@ -9,7 +9,6 @@ import {
   getOperatingRoomInteractionSnapshot,
   resetOperatingRoomLayout,
   subscribeOperatingRoomInteraction,
-  toggleOperatingRoomEditMode,
 } from '../scene/operatingRoomInteraction.js';
 import {
   getCollisionPlannerSnapshot,
@@ -95,7 +94,7 @@ export default function ResearchControlDock() {
   const liveClearance = Number.isFinite(interaction.liveMinClearanceM)
     ? `${Math.max(0, interaction.liveMinClearanceM * 100).toFixed(1)} cm` : '—';
   const pose = transform.pose;
-  const controlsEnabled = interaction.ready && interaction.editMode;
+  const controlsEnabled = Boolean(transform.ready && pose);
   const layoutDirty = interaction.layoutDirty || transform.dirty;
 
   const resetAll = () => {
@@ -115,6 +114,8 @@ export default function ResearchControlDock() {
         <div style={{ position:'fixed', left:12, bottom:58, width:330, maxHeight:'78vh', overflowY:'auto', zIndex:19999, padding:12, boxSizing:'border-box', borderRadius:12, border:'1px solid rgba(45,212,191,.45)', background:'rgba(15,23,42,.97)', color:'#fff', boxShadow:'0 12px 40px rgba(0,0,0,.45)', backdropFilter:'blur(10px)', pointerEvents:'auto' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}><strong>OR SAFETY + LAYOUT</strong><button onClick={() => setPanel(null)} style={{ ...btn, padding:'3px 8px' }}>×</button></div>
           {row('Environment', orState.ready ? 'ATTACHED' : 'WAITING', orState.ready ? '#4ade80' : '#fbbf24')}
+          {row('Transform root', controlsEnabled ? 'READY' : 'WAITING', controlsEnabled ? '#4ade80' : '#fbbf24')}
+          {row('Camera', 'FREE', '#86efac')}
           {row('Live status', interaction.liveCollisionStatus || orState.collisionStatus || 'LOCATING')}
           {row('Live clearance', liveClearance)}
           {row('Path status', planner.status || 'IDLE')}
@@ -123,8 +124,7 @@ export default function ResearchControlDock() {
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:7, marginTop:12 }}>
             <button onClick={toggleOperatingRoomEnvironment} style={{ ...btn, background: orState.environmentVisible ? '#0f766e' : '#334155' }}>{orState.environmentVisible ? 'OR ON' : 'OR OFF'}</button>
             <button onClick={toggleSafetyBubbles} style={{ ...btn, background: orState.bubblesVisible ? '#6d28d9' : '#334155' }}>{orState.bubblesVisible ? 'BUBBLES ON' : 'BUBBLES'}</button>
-            <button onClick={toggleOperatingRoomEditMode} style={{ ...btn, background: interaction.editMode ? '#d97706' : '#334155' }}>{interaction.editMode ? 'EDITING' : 'EDIT OR'}</button>
-            <button onClick={resetAll} style={btn}>RESET LAYOUT</button>
+            <button onClick={resetAll} style={{ ...btn, gridColumn:'1 / -1' }}>RESET LAYOUT</button>
           </div>
 
           {layoutDirty && <div style={{ marginTop:10, padding:8, borderRadius:7, background:'rgba(245,158,11,.15)', color:'#fde68a', fontSize:10, fontWeight:800 }}>LAYOUT CHANGED · PREVIEW PATH AGAIN BEFORE MOVE C-ARM</div>}
@@ -140,7 +140,7 @@ export default function ResearchControlDock() {
             </select>
 
             {pose && <div style={{ marginTop:6, color:'#94a3b8', fontFamily:'monospace', fontSize:10 }}>X {pose.x.toFixed(2)} · Y {pose.y.toFixed(2)} · Z {pose.z.toFixed(2)} · R {pose.rotationYDeg.toFixed(0)}°</div>}
-            {!interaction.editMode && <div style={{ marginTop:7, color:'#fbbf24', fontSize:10 }}>Press EDIT OR first, then use the controls below.</div>}
+            {!controlsEnabled && <div style={{ marginTop:7, color:'#fbbf24', fontSize:10 }}>Waiting for the live Three.js OR root.</div>}
 
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6, marginTop:9 }}>
               <button disabled={!controlsEnabled} onClick={() => nudgeSelectedOperatingRoomObject('x', -0.10)} style={{ ...smallBtn, opacity:controlsEnabled?1:.4 }}>X −</button>
@@ -157,11 +157,11 @@ export default function ResearchControlDock() {
             </div>
 
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6, marginTop:8 }}>
-              <button onClick={() => randomizeOperatingRoomLayout()} disabled={!interaction.ready} style={{ ...btn, background:'#7c3aed', opacity:interaction.ready?1:.4 }}>🎲 RANDOMIZE OR</button>
+              <button onClick={() => randomizeOperatingRoomLayout()} disabled={!transform.ready} style={{ ...btn, background:'#7c3aed', opacity:transform.ready?1:.4 }}>🎲 RANDOMIZE OR</button>
               <button onClick={repeatLastOperatingRoomRandomization} disabled={!Number.isInteger(transform.lastRandomSeed)} style={{ ...btn, opacity:Number.isInteger(transform.lastRandomSeed)?1:.4 }}>REPEAT SEED</button>
             </div>
             {Number.isInteger(transform.lastRandomSeed) && <div style={{ marginTop:5, color:'#94a3b8', fontSize:9 }}>Seed: {transform.lastRandomSeed}</div>}
-            <div style={{ marginTop:7, color:'#94a3b8', fontSize:9, lineHeight:1.4 }}>X/Z step 10 cm · Y step 5 cm · rotation 15°. Randomize changes floor position + heading while keeping the current vertical level. PREVIEW PATH is required after edits.</div>
+            <div style={{ marginTop:7, color:'#94a3b8', fontSize:9, lineHeight:1.4 }}>Direct Three.js transforms with a short animation. Camera orbit remains available while equipment moves. X/Z step 10 cm · Y step 5 cm · rotation 15°. PREVIEW PATH is required after edits.</div>
             {transform.message && <div style={{ marginTop:6, color:'#cbd5e1', fontSize:9 }}>{transform.message}</div>}
           </div>
         </div>
