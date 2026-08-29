@@ -196,17 +196,11 @@ export default function MedicalVoiceSearch() {
       .find(lang => /^en[-_]/i.test(lang));
     recognition.lang = preferredEnglish || 'en-US';
 
-    // Chrome exposes contextual phrase biasing on some versions. Use it when
-    // available, but keep the recognizer functional when the API is absent.
-    try {
-      if ('phrases' in recognition && window.SpeechRecognitionPhrase) {
-        recognition.phrases = MEDICAL_TERMS.map(
-          term => new window.SpeechRecognitionPhrase(term, 5.0)
-        );
-      }
-    } catch {
-      // Experimental API: silently fall back to normal recognition.
-    }
+    // Do not set SpeechRecognition.phrases here. Chromium exposes the property
+    // on some builds even when contextual phrase biasing is not supported by
+    // the active recognition service, which produces a phrases-not-supported
+    // error before normal transcription can begin. Medical vocabulary is
+    // instead handled safely by alternative reranking + normalization below.
 
     recognition.onstart = () => {
       startingRef.current = false;
@@ -272,7 +266,21 @@ export default function MedicalVoiceSearch() {
         return;
       }
       if (event.error === 'no-speech') {
+        setError('');
         setMessage('I did not hear anything. Listening again…');
+        return;
+      }
+      if (event.error === 'network') {
+        setError('Speech service could not connect. Check your internet connection and try again.');
+        return;
+      }
+      if (event.error === 'audio-capture') {
+        setError('No microphone was detected. Check your microphone and browser input settings.');
+        return;
+      }
+      if (event.error === 'phrases-not-supported') {
+        setError('');
+        setMessage('Restarting voice recognition without phrase biasing…');
         return;
       }
       setError(`Voice recognition error: ${event.error || 'unknown error'}`);
@@ -285,7 +293,7 @@ export default function MedicalVoiceSearch() {
       if (!openRef.current || submittedRef.current) return;
       window.setTimeout(() => {
         if (openRef.current && !submittedRef.current) startRecognition();
-      }, 220);
+      }, 260);
     };
 
     try {
@@ -314,7 +322,6 @@ export default function MedicalVoiceSearch() {
       const target = event.target?.closest?.(`#${VOICE_BUTTON_ID}`);
       if (!target) return;
 
-      // Replace the older one-shot voice handler with the full medical overlay.
       event.preventDefault();
       event.stopPropagation();
       if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
