@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import App from './App.jsx';
 import GeminiAssistant from './components/GeminiAssistant.jsx';
 import OperatingRoomSafetyPanel from './components/OperatingRoomSafetyPanel.js';
+import PlannerUiPolish from './components/PlannerUiPolish.jsx';
 import './scene/orDragOverride.js';
 import './scene/realisticOperatingRoomAssets.js';
 import './scene/operatingRoomCollisionPolicy.js';
@@ -99,6 +100,7 @@ export default function SimulatorShell() {
   return (
     <>
       <App />
+      <PlannerUiPolish />
       <OperatingRoomSafetyPanel />
       <GeminiAssistant simulatorContext={simulatorContext} />
     </>
