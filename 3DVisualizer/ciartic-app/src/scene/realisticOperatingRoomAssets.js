@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { clone as cloneSkinnedModel } from 'three/addons/utils/SkeletonUtils.js';
 
 const EQUIPMENT_GROUP_NAME = 'operating_room_equipment_layer';
 
 const ASSETS = [
   { rootName: 'or_iv_pole', url: '/operating_room/iv_pole.glb', targetHeightM: 1.9 },
-  { rootName: 'or_surgeon', url: '/operating_room/surgeon.glb', targetHeightM: 1.72 },
   { rootName: 'or_scrub_nurse', url: '/operating_room/scrub_nurse.glb', targetHeightM: 1.68 },
+  { rootName: 'or_surgeon', url: '/operating_room/surgeon.glb', targetHeightM: 1.72 },
 ];
 
 const loader = new GLTFLoader();
@@ -15,9 +16,19 @@ loader.setMeshoptDecoder(MeshoptDecoder);
 
 const loadingRoots = new WeakSet();
 const hydratedRoots = new WeakSet();
+const hydratingGroups = new WeakSet();
+const pendingGroups = new WeakSet();
 const capturedEquipmentGroups = new Set();
+const assetPrototypePromises = new Map();
 let installed = false;
-let timer = null;
+
+const waitForIdle = () => new Promise(resolve => {
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(() => resolve(), { timeout: 650 });
+  } else {
+    window.setTimeout(resolve, 32);
+  }
+});
 
 const disposeObject = object => {
   object?.traverse?.(child => {
@@ -26,6 +37,18 @@ const disposeObject = object => {
     if (Array.isArray(child.material)) child.material.forEach(m => m?.dispose?.());
     else child.material?.dispose?.();
   });
+};
+
+const loadModelClone = async config => {
+  if (!assetPrototypePromises.has(config.url)) {
+    assetPrototypePromises.set(
+      config.url,
+      loader.loadAsync(config.url).then(gltf => gltf.scene)
+    );
+  }
+
+  const prototype = await assetPrototypePromises.get(config.url);
+  return cloneSkinnedModel(prototype);
 };
 
 const prepareModel = (model, targetHeightM) => {
@@ -47,11 +70,17 @@ const prepareModel = (model, targetHeightM) => {
   scaledBox.getCenter(center);
   model.position.set(-center.x, -scaledBox.min.y, -center.z);
 
+  // The staff GLBs are among the heaviest visible assets. Dynamic shadow-map
+  // rendering over every mesh caused a large GPU cost on lower-power devices
+  // and does not affect planner/collision geometry, so realistic OR assets use
+  // direct lighting only.
   model.traverse(object => {
     if (!object.isMesh) return;
-    object.castShadow = true;
-    object.receiveShadow = true;
+    object.castShadow = false;
+    object.receiveShadow = false;
+    object.frustumCulled = true;
   });
+
   model.updateMatrixWorld(true);
   return model;
 };
@@ -62,8 +91,7 @@ const replaceProceduralChildren = async (root, config) => {
 
   try {
     console.info(`[OR assets] Loading ${config.url} into ${config.rootName}`, root.uuid);
-    const gltf = await loader.loadAsync(config.url);
-    const model = prepareModel(gltf.scene, config.targetHeightM);
+    const model = prepareModel(await loadModelClone(config), config.targetHeightM);
     model.name = `${config.rootName}_realistic_glb`;
     model.userData.realisticOperatingRoomAsset = true;
     model.userData.sourceUrl = config.url;
@@ -80,27 +108,42 @@ const replaceProceduralChildren = async (root, config) => {
     console.info(`[OR assets] READY ${config.rootName}`, root.uuid);
   } catch (error) {
     console.error(`[OR assets] FAILED ${config.rootName}`, error);
+  } finally {
+    loadingRoots.delete(root);
   }
 };
 
-const hydrateGroup = equipmentGroup => {
+const hydrateGroup = async equipmentGroup => {
   if (!equipmentGroup?.isGroup) return;
+
   capturedEquipmentGroups.add(equipmentGroup);
   window.__carmOperatingRoomEquipment = equipmentGroup;
   window.__carmOperatingRoomEquipmentGroups = capturedEquipmentGroups;
 
-  ASSETS.forEach(config => {
-    const root = equipmentGroup.getObjectByName(config.rootName);
-    if (root && !root.userData.realisticAssetLoaded) replaceProceduralChildren(root, config);
-  });
-};
+  if (hydratingGroups.has(equipmentGroup)) {
+    pendingGroups.add(equipmentGroup);
+    return;
+  }
 
-const hydrateAll = () => {
-  [...capturedEquipmentGroups].forEach(group => {
-    if (!group?.isGroup) capturedEquipmentGroups.delete(group);
-    else hydrateGroup(group);
-  });
-  if (window.__carmOperatingRoomEquipment?.isGroup) hydrateGroup(window.__carmOperatingRoomEquipment);
+  hydratingGroups.add(equipmentGroup);
+
+  try {
+    // Decode one model at a time and yield between assets. Starting the surgeon,
+    // nurse and IV pole concurrently created noticeable startup stalls.
+    for (const config of ASSETS) {
+      const root = equipmentGroup.getObjectByName(config.rootName);
+      if (!root || root.userData.realisticAssetLoaded) continue;
+      await replaceProceduralChildren(root, config);
+      await waitForIdle();
+    }
+  } finally {
+    hydratingGroups.delete(equipmentGroup);
+
+    if (pendingGroups.has(equipmentGroup)) {
+      pendingGroups.delete(equipmentGroup);
+      queueMicrotask(() => hydrateGroup(equipmentGroup));
+    }
+  }
 };
 
 export const installRealisticOperatingRoomAssets = () => {
@@ -127,14 +170,9 @@ export const installRealisticOperatingRoomAssets = () => {
         queueMicrotask(() => hydrateGroup(object));
       }
     }
+
     return result;
   };
-
-  timer = window.setInterval(hydrateAll, 500);
-
-  window.addEventListener('beforeunload', () => {
-    if (timer) window.clearInterval(timer);
-  }, { once: true });
 };
 
 installRealisticOperatingRoomAssets();
