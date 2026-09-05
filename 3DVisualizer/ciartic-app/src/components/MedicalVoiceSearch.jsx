@@ -68,14 +68,9 @@ function bestAlternative(result) {
 }
 
 function setNativeInputValue(input, value) {
-  const setter = Object.getOwnPropertyDescriptor(
-    window.HTMLInputElement.prototype,
-    'value'
-  )?.set;
-
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
   if (setter) setter.call(input, value);
   else input.value = value;
-
   input.dispatchEvent(new Event('input', { bubbles: true }));
   input.dispatchEvent(new Event('change', { bubbles: true }));
 }
@@ -109,7 +104,7 @@ export default function MedicalVoiceSearch() {
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [interim, setInterim] = useState('');
-  const [message, setMessage] = useState('Say an imaging request, then say “enter”.');
+  const [message, setMessage] = useState('Say an imaging request, then say ENTER.');
   const [error, setError] = useState('');
   const [supported, setSupported] = useState(true);
 
@@ -141,21 +136,21 @@ export default function MedicalVoiceSearch() {
   const submit = useCallback((rawText) => {
     const normalized = normalizeMedicalRequest(rawText || finalTextRef.current);
     if (!normalized) {
-      setError('I did not catch a request yet. Try again.');
+      setError('No request was captured. Speak again.');
       return false;
     }
 
     const missingSide = pairedAnatomyNeedsSide(normalized);
     if (missingSide) {
-      setError(`Please include left or right for ${missingSide}. Example: “left ${missingSide} AP”.`);
-      setMessage('Say the full request again, then say “enter”.');
+      setError(`Include left or right for ${missingSide}. Example: left ${missingSide} AP.`);
+      setMessage('Repeat the full request, then say ENTER.');
       return false;
     }
 
     const input = findRequestInput();
     const interpret = findInterpretButton();
     if (!input || !interpret) {
-      setError('The path planner is not ready yet.');
+      setError('The path planner is not ready.');
       return false;
     }
 
@@ -163,7 +158,7 @@ export default function MedicalVoiceSearch() {
     stopRecognition();
     setNativeInputValue(input, normalized);
     setTranscript(normalized);
-    setMessage('Submitting request…');
+    setMessage('Submitting request');
 
     window.setTimeout(() => {
       interpret.click();
@@ -180,33 +175,28 @@ export default function MedicalVoiceSearch() {
     if (!SpeechRecognition) {
       setSupported(false);
       setListening(false);
-      setError('Voice search is not supported in this browser. Use Chrome or Edge, or type the request.');
+      setError('Voice recognition is unavailable in this browser. Use Chrome or Edge, or type the request.');
       return;
     }
 
     setSupported(true);
     startingRef.current = true;
+
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.maxAlternatives = 5;
 
-    const preferredEnglish = (navigator.languages || [navigator.language || 'en-US'])
+    const englishLanguage = (navigator.languages || [navigator.language || 'en-US'])
       .find(lang => /^en[-_]/i.test(lang));
-    recognition.lang = preferredEnglish || 'en-US';
-
-    // Do not set SpeechRecognition.phrases here. Chromium exposes the property
-    // on some builds even when contextual phrase biasing is not supported by
-    // the active recognition service, which produces a phrases-not-supported
-    // error before normal transcription can begin. Medical vocabulary is
-    // instead handled safely by alternative reranking + normalization below.
+    recognition.lang = englishLanguage || 'en-US';
 
     recognition.onstart = () => {
       startingRef.current = false;
       setListening(true);
       setError('');
-      setMessage('Listening… Say the request, then say “enter”.');
+      setMessage('Listening. Say the request, then say ENTER.');
     };
 
     recognition.onresult = event => {
@@ -266,24 +256,14 @@ export default function MedicalVoiceSearch() {
         return;
       }
       if (event.error === 'no-speech') {
-        setError('');
-        setMessage('I did not hear anything. Listening again…');
-        return;
-      }
-      if (event.error === 'network') {
-        setError('Speech service could not connect. Check your internet connection and try again.');
-        return;
-      }
-      if (event.error === 'audio-capture') {
-        setError('No microphone was detected. Check your microphone and browser input settings.');
+        setMessage('No speech detected. Listening again.');
         return;
       }
       if (event.error === 'phrases-not-supported') {
-        setError('');
-        setMessage('Restarting voice recognition without phrase biasing…');
+        setMessage('Listening with standard recognition.');
         return;
       }
-      setError(`Voice recognition error: ${event.error || 'unknown error'}`);
+      setError(`Voice recognition error: ${event.error || 'unknown'}`);
     };
 
     recognition.onend = () => {
@@ -293,7 +273,7 @@ export default function MedicalVoiceSearch() {
       if (!openRef.current || submittedRef.current) return;
       window.setTimeout(() => {
         if (openRef.current && !submittedRef.current) startRecognition();
-      }, 260);
+      }, 220);
     };
 
     try {
@@ -312,7 +292,7 @@ export default function MedicalVoiceSearch() {
     setTranscript('');
     setInterim('');
     setError('');
-    setMessage('Say an imaging request, then say “enter”.');
+    setMessage('Say an imaging request, then say ENTER.');
     setOpen(true);
     window.setTimeout(startRecognition, 80);
   }, [startRecognition]);
@@ -321,7 +301,6 @@ export default function MedicalVoiceSearch() {
     const interceptVoiceButton = event => {
       const target = event.target?.closest?.(`#${VOICE_BUTTON_ID}`);
       if (!target) return;
-
       event.preventDefault();
       event.stopPropagation();
       if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
@@ -341,20 +320,23 @@ export default function MedicalVoiceSearch() {
   return (
     <div style={styles.overlay} role="dialog" aria-modal="true" aria-label="Medical voice search">
       <div style={styles.shell}>
-        <button type="button" onClick={close} style={styles.close} aria-label="Close voice search">×</button>
+        <div style={styles.header}>
+          <div>
+            <div style={styles.eyebrow}>MEDICAL VOICE INPUT</div>
+            <div style={styles.title}>{listening ? 'Listening' : supported ? 'Voice search' : 'Voice unavailable'}</div>
+          </div>
+          <button type="button" onClick={close} style={styles.close} aria-label="Close voice search">X</button>
+        </div>
 
-        <div style={styles.eyebrow}>MEDICAL VOICE SEARCH</div>
-        <div style={styles.title}>{listening ? 'Listening' : supported ? 'Voice search' : 'Voice unavailable'}</div>
-        <div style={styles.subtitle}>{message}</div>
-
-        <div style={{ ...styles.mic, ...(listening ? styles.micLive : {}) }} aria-hidden="true">
-          <span style={styles.micGlyph}>●</span>
+        <div style={styles.statusLine}>
+          <span style={{...styles.statusMark, background:listening ? '#2f5c46' : '#747d81'}} />
+          <span>{message}</span>
         </div>
 
         <div style={styles.transcriptBox}>
           {visibleTranscript
             ? <div style={styles.transcript}>{transcript}<span style={styles.interim}>{interim ? ` ${interim}` : ''}</span></div>
-            : <div style={styles.placeholder}>Try “neck AP” or “left knee lateral”</div>}
+            : <div style={styles.placeholder}>Example: neck AP / left knee lateral</div>}
         </div>
 
         {error ? <div style={styles.error}>{error}</div> : null}
@@ -367,7 +349,7 @@ export default function MedicalVoiceSearch() {
               setTranscript('');
               setInterim('');
               setError('');
-              setMessage('Listening… Say the request, then say “enter”.');
+              setMessage('Listening. Say the request, then say ENTER.');
             }}
             style={styles.secondaryButton}
           >
@@ -377,77 +359,62 @@ export default function MedicalVoiceSearch() {
             type="button"
             onClick={() => submit(visibleTranscript)}
             disabled={!visibleTranscript}
-            style={{ ...styles.enterButton, opacity: visibleTranscript ? 1 : .38 }}
+            style={{ ...styles.enterButton, opacity: visibleTranscript ? 1 : .4 }}
           >
             ENTER
           </button>
         </div>
 
         <div style={styles.footerNote}>
-          Medical vocabulary assist · multiple recognition alternatives · request confirmation before planner interpretation
+          Standard browser speech recognition / five alternatives / medical vocabulary reranking / manual confirmation available
         </div>
       </div>
     </div>
   );
 }
 
+const font = 'Arial, Helvetica, sans-serif';
 const styles = {
   overlay: {
-    position: 'fixed', inset: 0, zIndex: 50000,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    padding: 24, background: 'rgba(39,35,31,.50)', backdropFilter: 'blur(16px)',
-    WebkitBackdropFilter: 'blur(16px)', fontFamily: 'Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+    position: 'fixed', inset: 0, zIndex: 50000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: 24, background: '#555b5d', fontFamily: font,
   },
   shell: {
-    position: 'relative', width: 660, maxWidth: '94vw', minHeight: 470,
-    boxSizing: 'border-box', padding: '38px 42px 32px', borderRadius: 34,
-    background: 'linear-gradient(145deg,#f8f4ed,#ddd5ca)', color: '#292521',
-    border: '1px solid rgba(255,255,255,.82)',
-    boxShadow: '24px 24px 56px rgba(57,51,45,.28), -10px -10px 30px rgba(255,255,255,.58), inset 1px 1px 0 rgba(255,255,255,.96)',
-    textAlign: 'center',
+    width: 620, maxWidth: '94vw', boxSizing: 'border-box', padding: 22, borderRadius: 2,
+    background: '#d6d9d7', color: '#1b2226', border: '1px solid #687176', boxShadow: 'none', textAlign: 'left',
+  },
+  header: {
+    display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:16,paddingBottom:14,borderBottom:'2px solid #1b2226',
   },
   close: {
-    position: 'absolute', top: 18, right: 20, width: 40, height: 40, borderRadius: 14,
-    border: '1px solid rgba(91,81,70,.10)', background: 'linear-gradient(145deg,#f1ebe2,#d7cec2)',
-    color: '#39332d', fontSize: 24, lineHeight: 1, cursor: 'pointer',
-    boxShadow: '4px 4px 9px rgba(76,68,60,.15), -3px -3px 8px rgba(255,255,255,.72)',
+    width: 34, height: 34, borderRadius: 2, border: '1px solid #6f777b', background: '#bbc1be',
+    color: '#1b2226', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: font,
   },
-  eyebrow: { fontSize: 10, letterSpacing: 2.2, fontWeight: 900, color: '#786f65', marginBottom: 8 },
-  title: { fontSize: 29, lineHeight: 1.1, fontWeight: 900, letterSpacing: '-.035em', color: '#27231f' },
-  subtitle: { margin: '10px auto 24px', maxWidth: 470, fontSize: 13, lineHeight: 1.45, color: '#625a52' },
-  mic: {
-    width: 92, height: 92, margin: '0 auto 24px', borderRadius: '50%', display: 'grid', placeItems: 'center',
-    background: 'linear-gradient(145deg,#eee7dc,#cfc5b8)',
-    boxShadow: '9px 9px 18px rgba(85,75,65,.20), -7px -7px 17px rgba(255,255,255,.74), inset 1px 1px 0 rgba(255,255,255,.82)',
-    transition: 'transform .18s ease, box-shadow .18s ease',
+  eyebrow: { fontSize: 9, letterSpacing: '.14em', fontWeight: 800, color: '#566166', marginBottom: 6 },
+  title: { fontSize: 25, lineHeight: 1.05, fontWeight: 800, color: '#171d20' },
+  statusLine: {
+    display:'flex',alignItems:'center',gap:8,minHeight:34,borderBottom:'1px solid #91999d',fontSize:12,color:'#3f4a4f',
   },
-  micLive: {
-    transform: 'scale(1.06)',
-    boxShadow: '0 0 0 10px rgba(139,119,96,.10), 10px 10px 22px rgba(85,75,65,.22), -8px -8px 20px rgba(255,255,255,.78), inset 1px 1px 0 rgba(255,255,255,.86)',
-  },
-  micGlyph: { width: 26, height: 26, borderRadius: '50%', background: '#3a342e', color: 'transparent', boxShadow: '0 8px 0 -5px #3a342e' },
+  statusMark: { width: 8, height: 8, borderRadius: 0, display:'inline-block' },
   transcriptBox: {
-    minHeight: 92, padding: '20px 22px', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: '#e9e2d8', border: '1px solid rgba(86,77,68,.09)',
-    boxShadow: 'inset 4px 4px 10px rgba(92,82,71,.14), inset -4px -4px 10px rgba(255,255,255,.65)',
+    minHeight: 110, padding: '18px 16px', marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+    background: '#c9cdcb', border: '1px solid #838c90', borderRadius: 2, boxShadow: 'none',
   },
-  transcript: { fontSize: 24, lineHeight: 1.35, fontWeight: 750, letterSpacing: '-.025em', color: '#2c2824' },
-  interim: { color: '#8a8178', fontWeight: 650 },
-  placeholder: { fontSize: 17, color: '#8a8178' },
+  transcript: { fontSize: 24, lineHeight: 1.35, fontWeight: 700, letterSpacing: '-.01em', color: '#20272a' },
+  interim: { color: '#697277', fontWeight: 500 },
+  placeholder: { fontSize: 15, color: '#5b666b' },
   error: {
-    marginTop: 12, padding: '10px 12px', borderRadius: 13, background: 'rgba(180,128,72,.12)',
-    border: '1px solid rgba(142,96,51,.14)', color: '#6d4828', fontSize: 12, fontWeight: 750,
+    marginTop: 10, padding: '9px 10px', borderRadius: 2, background: '#c3b493',
+    border: '1px solid #755a2f', color: '#2d261a', fontSize: 12, fontWeight: 700,
   },
-  actions: { display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 12, marginTop: 18 },
+  actions: { display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 8, marginTop: 14 },
   secondaryButton: {
-    minHeight: 44, borderRadius: 14, border: '1px solid rgba(255,255,255,.66)',
-    background: 'linear-gradient(145deg,#f1ebe3,#d7cec2)', color: '#494139', fontWeight: 850, cursor: 'pointer',
-    boxShadow: '4px 4px 10px rgba(84,74,64,.16), -3px -3px 9px rgba(255,255,255,.72)',
+    minHeight: 42, borderRadius: 2, border: '1px solid #6e777b', background: '#bbc1be', color: '#1b2226',
+    fontWeight: 800, cursor: 'pointer', boxShadow: 'none', fontFamily: font,
   },
   enterButton: {
-    minHeight: 44, borderRadius: 14, border: '1px solid rgba(255,255,255,.12)',
-    background: 'linear-gradient(145deg,#403a34,#25221f)', color: '#faf6ef', fontWeight: 900, cursor: 'pointer',
-    boxShadow: '5px 5px 12px rgba(49,43,38,.28), -3px -3px 9px rgba(255,255,255,.42)',
+    minHeight: 42, borderRadius: 2, border: '1px solid #29383f', background: '#29383f', color: '#e7ecea',
+    fontWeight: 800, cursor: 'pointer', boxShadow: 'none', fontFamily: font,
   },
-  footerNote: { marginTop: 15, fontSize: 10, lineHeight: 1.45, color: '#7a7168' },
+  footerNote: { marginTop: 12, paddingTop:10, borderTop:'1px solid #9aa2a5', fontSize: 9, lineHeight: 1.45, color: '#59656a' },
 };
