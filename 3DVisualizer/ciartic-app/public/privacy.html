@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy | C-Arm Guidance Simulator</title>
+  <style>
+    body { margin:0; background:#d7dad8; color:#1c2326; font-family:Arial,Helvetica,sans-serif; }
+    main { max-width:760px; margin:0 auto; padding:48px 24px 64px; }
+    h1 { margin:0 0 8px; font-size:30px; }
+    h2 { margin-top:30px; font-size:17px; border-bottom:1px solid #858d91; padding-bottom:7px; }
+    p, li { font-size:14px; line-height:1.65; }
+    .meta { color:#596469; font-size:12px; margin-bottom:30px; }
+    a { color:#294f65; }
+    .notice { border:1px solid #70797d; background:#c9cdca; padding:12px; margin:20px 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Privacy Notice</h1>
+    <div class="meta">C-Arm Guidance Simulator V3 | Research and educational software</div>
+    <div class="notice">This simulator is not a medical device and must not be used for patient care.</div>
+
+    <h2>Information handled by the simulator</h2>
+    <p>The application may process simulator selections, locally stored registration data, planner state, browser microphone input when voice search is activated, and questions submitted to Gemini Guidance.</p>
+
+    <h2>Local browser data</h2>
+    <p>Patient-landmark registration and some simulator settings may be stored in browser storage so they can persist between sessions. Clearing site data removes those local values.</p>
+
+    <h2>Voice input</h2>
+    <p>Voice search uses the browser speech-recognition capability when available. Microphone access begins only after the user activates voice search and grants browser permission. Speech handling may depend on the browser vendor's recognition service.</p>
+
+    <h2>AI requests</h2>
+    <p>Questions submitted through Gemini Guidance are sent through the configured Firebase AI integration so the assistant can respond using simulator context. Do not enter patient-identifying, confidential, or regulated clinical information.</p>
+
+    <h2>Infrastructure</h2>
+    <p>The public simulator uses Firebase Hosting and related application-protection services. The planning service is hosted separately. Service providers may process technical request data according to their own policies.</p>
+
+    <h2>Intended use</h2>
+    <p>This project is intended for research, engineering development, demonstrations, and education. It is not designed to collect real patient data.</p>
+
+    <p><a href="/">Return to simulator</a> | <a href="/terms.html">Terms</a></p>
+  </main>
+</body>
+</html>
