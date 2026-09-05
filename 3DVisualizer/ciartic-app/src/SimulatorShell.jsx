@@ -1,16 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import App from './App.jsx';
 import GeminiAssistant from './components/GeminiAssistant.jsx';
-import ResearchControlDock from './components/ResearchControlDock.jsx';
+import OperatingRoomSafetyPanel from './components/OperatingRoomSafetyPanel.js';
+import PlannerUiPolish from './components/PlannerUiPolish.jsx';
+import MedicalVoiceSearch from './components/MedicalVoiceSearch.jsx';
+import InterfaceDiscipline from './components/InterfaceDiscipline.jsx';
 import './scene/orDragOverride.js';
+import './scene/realisticOperatingRoomAssets.js';
+import './scene/operatingRoomCollisionPolicy.js';
+import './scene/runtimePerformanceTuner.js';
 
-const parseNumber = (value) => {
+const parseNumber = value => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const readSimulatorText = () => {
+  // Gemini only needs planner/state text. Reading document.body.innerText every
+  // 750 ms forced layout over the entire simulator and was costly on slower
+  // devices. Prefer the small planner subtree and use body text only while the
+  // planner is still mounting.
+  const planner = document.querySelector('[data-carm-planner="true"]');
+  return planner?.innerText || document.body?.innerText || '';
+};
+
 const readSimulatorContext = () => {
-  const text = document.body?.innerText || '';
+  const text = readSimulatorText();
   const requestMatch = text.match(/Request:\s*([^\n—]+?)\s*—\s*([^\n]+)/i);
   const regionMatch = text.match(/Region:\s*([^\n]+)/i);
   const statusMatch = text.match(/Status:\s*([^\n]+)/i);
@@ -28,15 +43,32 @@ const readSimulatorContext = () => {
   const exposing = /EXPOSING…|EXPOSING\.\.\./i.test(text);
   const projectionLabel = requestMatch?.[2]?.trim() || null;
   const anatomyLabel = requestMatch?.[1]?.trim() || null;
+
   return {
-    mode: 'C-Arm Guidance Simulator V3', researchOnly: true,
-    selection: { anatomyLabel, anatomyShortLabel: anatomyLabel, projectionLabel, bodyRegion: regionMatch?.[1]?.trim() || null },
-    beam: { active: exposing }, exposure: { status: exposing ? 'EXPOSING' : arrived ? 'READY' : null },
+    mode: 'C-Arm Guidance Simulator V3',
+    researchOnly: true,
+    selection: {
+      anatomyLabel,
+      anatomyShortLabel: anatomyLabel,
+      projectionLabel,
+      bodyRegion: regionMatch?.[1]?.trim() || null,
+    },
+    beam: { active: exposing },
+    exposure: { status: exposing ? 'EXPOSING' : arrived ? 'READY' : null },
     planner: {
-      status: statusMatch?.[1]?.trim() || null, view: projectionLabel,
-      target: targetMatch ? { x_mm: parseNumber(targetMatch[1]), y_mm: parseNumber(targetMatch[2]), z_mm: parseNumber(targetMatch[3]) } : null,
+      status: statusMatch?.[1]?.trim() || null,
+      view: projectionLabel,
+      target: targetMatch ? {
+        x_mm: parseNumber(targetMatch[1]),
+        y_mm: parseNumber(targetMatch[2]),
+        z_mm: parseNumber(targetMatch[3]),
+      } : null,
       confidence: confidenceMatch ? { percentage: parseNumber(confidenceMatch[1]) } : null,
-      geometryVerification: geometryVerified ? { verified: true, isocenter_error_mm: isoMatch ? parseNumber(isoMatch[1]) : null, central_ray_error_mm: rayMatch ? parseNumber(rayMatch[1]) : null } : null,
+      geometryVerification: geometryVerified ? {
+        verified: true,
+        isocenter_error_mm: isoMatch ? parseNumber(isoMatch[1]) : null,
+        central_ray_error_mm: rayMatch ? parseNumber(rayMatch[1]) : null,
+      } : null,
       finalPose: finalOrbitalMatch || finalLiftMatch || finalWigWagMatch || finalCartXMatch || finalCartZMatch ? {
         orbital_slide_deg: finalOrbitalMatch ? parseNumber(finalOrbitalMatch[1]) : null,
         lift: finalLiftMatch ? parseNumber(finalLiftMatch[1]) : null,
@@ -44,20 +76,67 @@ const readSimulatorContext = () => {
         cart_x: finalCartXMatch ? parseNumber(finalCartXMatch[1]) : null,
         cart_z: finalCartZMatch ? parseNumber(finalCartZMatch[1]) : null,
       } : null,
-      hasPlannedPath: /MOVE C-ARM/i.test(text), isPlanning: /PLANNING|SOLVING/i.test(text), isPathAnimating: /MOVING|ANIMATING/i.test(text),
+      hasPlannedPath: /MOVE C-ARM/i.test(text),
+      isPlanning: /PLANNING|SOLVING/i.test(text),
+      isPathAnimating: /MOVING|ANIMATING/i.test(text),
     },
-    target: targetMatch ? { x_mm: parseNumber(targetMatch[1]), y_mm: parseNumber(targetMatch[2]), z_mm: parseNumber(targetMatch[3]) } : null,
-    geometry: { verification: geometryVerified ? { verified: true, isocenter_error_mm: isoMatch ? parseNumber(isoMatch[1]) : null, central_ray_error_mm: rayMatch ? parseNumber(rayMatch[1]) : null } : null, simulatorToleranceMm: 1 },
+    target: targetMatch ? {
+      x_mm: parseNumber(targetMatch[1]),
+      y_mm: parseNumber(targetMatch[2]),
+      z_mm: parseNumber(targetMatch[3]),
+    } : null,
+    geometry: {
+      verification: geometryVerified ? {
+        verified: true,
+        isocenter_error_mm: isoMatch ? parseNumber(isoMatch[1]) : null,
+        central_ray_error_mm: rayMatch ? parseNumber(rayMatch[1]) : null,
+      } : null,
+      simulatorToleranceMm: 1,
+    },
   };
 };
 
 export default function SimulatorShell() {
-  const [simulatorContext, setSimulatorContext] = useState(() => ({ mode: 'C-Arm Guidance Simulator V3', researchOnly: true }));
+  const [simulatorContext, setSimulatorContext] = useState(() => ({
+    mode: 'C-Arm Guidance Simulator V3',
+    researchOnly: true,
+  }));
+  const lastContextRef = useRef('');
+
   useEffect(() => {
-    const refresh = () => setSimulatorContext(readSimulatorContext());
+    const refresh = () => {
+      if (document.hidden) return;
+      const next = readSimulatorContext();
+      const signature = JSON.stringify(next);
+      if (signature === lastContextRef.current) return;
+      lastContextRef.current = signature;
+      setSimulatorContext(next);
+    };
+
     refresh();
-    const timer = window.setInterval(refresh, 750);
-    return () => window.clearInterval(timer);
+
+    // 1.5 s is responsive enough for the assistant context while avoiding a
+    // constant whole-interface polling loop on lower-power devices.
+    const timer = window.setInterval(refresh, 1500);
+    const onVisibility = () => {
+      if (!document.hidden) refresh();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
-  return <><App /><ResearchControlDock /><GeminiAssistant simulatorContext={simulatorContext} /></>;
+
+  return (
+    <>
+      <App />
+      <PlannerUiPolish />
+      <MedicalVoiceSearch />
+      <OperatingRoomSafetyPanel />
+      <InterfaceDiscipline />
+      <GeminiAssistant simulatorContext={simulatorContext} />
+    </>
+  );
 }
