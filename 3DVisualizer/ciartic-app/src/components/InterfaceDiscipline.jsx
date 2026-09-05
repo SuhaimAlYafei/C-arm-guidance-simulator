@@ -117,38 +117,42 @@ function nearestGeminiPanel(title) {
 }
 
 function normalizeVisibleMarks(root) {
-  if (!root) return;
+  if (!root || root.dataset.carmMarksNormalized === 'true') return;
 
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  const textNodes = [];
   let current = walker.nextNode();
   while (current) {
-    textNodes.push(current);
+    if (current.nodeValue?.includes('✦')) {
+      current.nodeValue = current.nodeValue.replaceAll('✦', 'AI');
+    }
     current = walker.nextNode();
   }
 
-  textNodes.forEach(node => {
-    if (node.nodeValue?.includes('✦')) node.nodeValue = node.nodeValue.replaceAll('✦', 'AI');
-  });
-
   Array.from(root.querySelectorAll('div,span')).forEach(node => {
-    if (node.textContent?.trim() === 'AI' && node.children.length === 0) {
+    const text = node.textContent?.trim();
+    if (text === 'AI' && node.children.length === 0) {
       node.dataset.carmAiMark = 'true';
     }
-    const style = window.getComputedStyle(node);
-    if (style.width === '7px' && style.height === '7px') {
+
+    // Use the inline dimensions instead of getComputedStyle(), which forces
+    // style calculation and was unnecessarily expensive on every DOM change.
+    if (node.style?.width === '7px' && node.style?.height === '7px') {
       node.dataset.carmLiveMark = 'true';
     }
-    if (node.textContent?.trim() === 'Analyzing simulator state') {
+
+    if (text === 'Analyzing simulator state') {
       node.parentElement?.setAttribute('data-carm-skeleton', 'true');
     }
   });
+
+  root.dataset.carmMarksNormalized = 'true';
 }
 
 function tagGemini() {
   const floating = Array.from(document.querySelectorAll('button')).find(button =>
     button.textContent?.includes('Gemini Guidance')
   );
+
   if (floating) {
     floating.dataset.carmGeminiButton = 'true';
     normalizeVisibleMarks(floating);
@@ -158,6 +162,7 @@ function tagGemini() {
     node.textContent?.trim() === 'Gemini Guidance'
   );
   const panel = nearestGeminiPanel(title);
+
   if (panel) {
     panel.dataset.carmGeminiPanel = 'true';
     normalizeVisibleMarks(panel);
@@ -173,20 +178,28 @@ export default function InterfaceDiscipline() {
       document.head.appendChild(style);
     }
 
-    let queued = false;
-    const refresh = () => {
-      if (queued) return;
-      queued = true;
-      window.requestAnimationFrame(() => {
-        queued = false;
-        tagGemini();
-      });
+    // The previous version observed the entire document, including character
+    // data, which caused work during simulator updates. The UI is now tagged
+    // only on mount, when Gemini is opened, and during a slow integrity check.
+    tagGemini();
+
+    const onClick = event => {
+      const button = event.target?.closest?.('button');
+      if (!button?.textContent?.includes('Gemini Guidance')) return;
+      window.setTimeout(tagGemini, 0);
+      window.setTimeout(tagGemini, 80);
     };
 
-    refresh();
-    const observer = new MutationObserver(refresh);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-    return () => observer.disconnect();
+    const integrityTimer = window.setInterval(() => {
+      if (!document.hidden) tagGemini();
+    }, 5000);
+
+    document.addEventListener('click', onClick, true);
+
+    return () => {
+      document.removeEventListener('click', onClick, true);
+      window.clearInterval(integrityTimer);
+    };
   }, []);
 
   return null;
