@@ -8,6 +8,7 @@ import InterfaceDiscipline from './components/InterfaceDiscipline.jsx';
 import './scene/orDragOverride.js';
 import './scene/realisticOperatingRoomAssets.js';
 import './scene/operatingRoomCollisionPolicy.js';
+import './scene/runtimePerformanceTuner.js';
 
 const parseNumber = value => {
   const parsed = Number(value);
