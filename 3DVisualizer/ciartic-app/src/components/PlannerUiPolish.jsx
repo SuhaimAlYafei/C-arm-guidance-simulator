@@ -1,134 +1,125 @@
 import { useEffect } from 'react';
 
-const STYLE_ID = 'carm-planner-clay-style';
+const STYLE_ID = 'carm-planner-clinical-style';
 const VOICE_ID = 'carm-planner-voice-button';
+const LEGAL_ID = 'carm-planner-legal-links';
 
 const plannerCss = `
 [data-carm-planner="true"] {
   width: 318px !important;
-  padding: 18px !important;
-  border: 1px solid rgba(255,255,255,.78) !important;
-  border-radius: 24px !important;
-  background: linear-gradient(145deg, rgba(248,244,237,.985), rgba(220,213,202,.975)) !important;
-  color: #302b26 !important;
-  box-shadow:
-    18px 18px 38px rgba(66,61,55,.24),
-    -8px -8px 24px rgba(255,255,255,.76),
-    inset 1px 1px 0 rgba(255,255,255,.94),
-    inset -1px -1px 0 rgba(119,109,97,.10) !important;
-  backdrop-filter: blur(18px) saturate(.85) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(.85) !important;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  padding: 16px !important;
+  border: 1px solid #6f7579 !important;
+  border-radius: 2px !important;
+  background: #d9dbd8 !important;
+  color: #1f2528 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  font-family: Arial, Helvetica, sans-serif !important;
   overflow: hidden !important;
 }
 
-/* The old planner used pale blue helper text. On the ivory surface it was too
-   low-contrast, so every ordinary text node now uses a dark warm neutral. */
+[data-carm-planner="true"] *,
+[data-carm-planner="true"] *::before,
+[data-carm-planner="true"] *::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  transition: none !important;
+}
+
 [data-carm-planner="true"] div,
 [data-carm-planner="true"] span,
 [data-carm-planner="true"] label,
 [data-carm-planner="true"] p,
 [data-carm-planner="true"] small {
-  color: #4b443d !important;
+  color: #30383c !important;
 }
 
 [data-carm-planner="true"] [data-planner-role="title"] {
-  color: #27231f !important;
+  color: #111619 !important;
   font-size: 15px !important;
-  font-weight: 900 !important;
-  letter-spacing: -.025em !important;
-  margin-bottom: 5px !important;
+  font-weight: 800 !important;
+  letter-spacing: .01em !important;
+  margin-bottom: 6px !important;
 }
 
 [data-carm-planner="true"] [data-planner-role="description"] {
-  color: #665d54 !important;
-  line-height: 1.45 !important;
+  color: #4b555a !important;
+  line-height: 1.4 !important;
 }
 
 [data-carm-planner="true"] [data-planner-role="field-label"] {
-  color: #5c534b !important;
-  font-weight: 800 !important;
-  letter-spacing: .01em !important;
+  color: #394247 !important;
+  font-weight: 700 !important;
+  letter-spacing: .02em !important;
 }
 
 [data-carm-planner="true"] input,
 [data-carm-planner="true"] select {
   min-height: 34px !important;
-  border: 1px solid rgba(82,75,67,.10) !important;
-  border-radius: 12px !important;
-  background: #ebe5dc !important;
-  color: #292520 !important;
-  box-shadow:
-    inset 3px 3px 7px rgba(93,84,73,.14),
-    inset -3px -3px 7px rgba(255,255,255,.78) !important;
+  border: 1px solid #91979a !important;
+  border-radius: 2px !important;
+  background: #cfd2cf !important;
+  color: #171d20 !important;
   outline: none !important;
+  font-family: Arial, Helvetica, sans-serif !important;
 }
 
 [data-carm-planner="true"] input::placeholder {
-  color: #81766b !important;
+  color: #626b70 !important;
   opacity: 1 !important;
 }
 
 [data-carm-planner="true"] input:focus,
 [data-carm-planner="true"] select:focus {
-  border-color: rgba(65,60,54,.34) !important;
-  box-shadow:
-    inset 3px 3px 7px rgba(93,84,73,.12),
-    inset -3px -3px 7px rgba(255,255,255,.82),
-    0 0 0 3px rgba(65,60,54,.09) !important;
+  border-color: #1f4f6b !important;
+  outline: 2px solid #879ba6 !important;
+  outline-offset: 0 !important;
 }
 
 [data-carm-planner="true"] option {
-  color: #292520 !important;
-  background: #f4efe8 !important;
+  color: #171d20 !important;
+  background: #d9dbd8 !important;
 }
 
 [data-carm-planner="true"] button {
   min-height: 34px !important;
-  border: 1px solid rgba(255,255,255,.64) !important;
-  border-radius: 12px !important;
-  background: linear-gradient(145deg, #f2ede5, #d7d0c5) !important;
-  color: #34302b !important;
-  font-weight: 850 !important;
-  letter-spacing: -.01em !important;
-  box-shadow:
-    4px 4px 9px rgba(88,80,71,.18),
-    -3px -3px 8px rgba(255,255,255,.74),
-    inset 1px 1px 0 rgba(255,255,255,.74) !important;
-  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease !important;
+  border: 1px solid #71787c !important;
+  border-radius: 2px !important;
+  background: #c5c9c6 !important;
+  color: #1e2528 !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-weight: 700 !important;
+  letter-spacing: .01em !important;
+  transform: none !important;
 }
 
-[data-carm-planner="true"] button:hover:not(:disabled) {
-  transform: translateY(-1px) !important;
-  box-shadow:
-    6px 6px 12px rgba(88,80,71,.20),
-    -4px -4px 10px rgba(255,255,255,.80) !important;
-}
-
+[data-carm-planner="true"] button:hover:not(:disabled),
 [data-carm-planner="true"] button:active:not(:disabled) {
-  transform: translateY(1px) !important;
-  box-shadow:
-    inset 3px 3px 7px rgba(88,80,71,.16),
-    inset -3px -3px 7px rgba(255,255,255,.66) !important;
+  transform: none !important;
+  background: #b9bfbc !important;
+}
+
+[data-carm-planner="true"] button:focus-visible {
+  outline: 2px solid #1f4f6b !important;
+  outline-offset: 1px !important;
 }
 
 [data-carm-planner="true"] button:disabled {
-  opacity: .46 !important;
+  opacity: .45 !important;
   cursor: not-allowed !important;
 }
 
 [data-carm-planner="true"] [data-planner-action="primary"] {
-  background: linear-gradient(145deg, #3c3934, #24221f) !important;
-  color: #fffaf2 !important;
-  border-color: rgba(255,255,255,.14) !important;
-  box-shadow:
-    5px 5px 12px rgba(44,41,37,.28),
-    -3px -3px 9px rgba(255,255,255,.5) !important;
+  background: #26343b !important;
+  color: #e8ecea !important;
+  border-color: #26343b !important;
 }
 
 [data-carm-planner="true"] [data-planner-action="interpret"] {
-  background: linear-gradient(145deg, #d8cfdf, #b8abc6) !important;
-  color: #302936 !important;
+  background: #6a7378 !important;
+  color: #eef0ee !important;
+  border-color: #5c656a !important;
 }
 
 [data-carm-planner="true"] [data-planner-role="voice-row"] {
@@ -139,94 +130,66 @@ const plannerCss = `
 [data-carm-planner="true"] [data-planner-action="voice"] {
   min-width: 54px !important;
   padding: 0 10px !important;
-  background: linear-gradient(145deg, #e5ded4, #c9c0b4) !important;
-  color: #352f29 !important;
+  background: #b8bebb !important;
+  color: #1b2327 !important;
   font-size: 9px !important;
   letter-spacing: .06em !important;
 }
 
-[data-carm-planner="true"] [data-planner-action="voice"][data-listening="true"] {
-  background: linear-gradient(145deg, #6f6257, #4d453e) !important;
-  color: #fffaf3 !important;
-  box-shadow:
-    inset 2px 2px 5px rgba(26,23,20,.22),
-    0 0 0 3px rgba(103,88,75,.12) !important;
-}
-
 [data-carm-planner="true"] [data-planner-role="warning"] {
   padding: 9px 10px !important;
-  border: 1px solid rgba(130,92,38,.20) !important;
-  border-radius: 13px !important;
-  background: rgba(218,196,157,.42) !important;
-  color: #594423 !important;
-  box-shadow: inset 2px 2px 5px rgba(116,92,54,.08) !important;
+  border: 1px solid #8b6d3d !important;
+  border-radius: 2px !important;
+  background: #c8b891 !important;
+  color: #322817 !important;
 }
 
 [data-carm-planner="true"] [data-planner-role="warning"] * {
-  color: #594423 !important;
+  color: #322817 !important;
 }
 
-[data-carm-planner="true"] [data-planner-role="info"] {
-  border: 1px solid rgba(88,80,70,.08) !important;
-  border-radius: 14px !important;
-  background: rgba(232,226,216,.82) !important;
-  color: #403a34 !important;
-  box-shadow:
-    inset 2px 2px 6px rgba(91,82,71,.10),
-    inset -2px -2px 6px rgba(255,255,255,.62) !important;
-}
-
-[data-carm-planner="true"] [data-planner-role="info"] * {
-  color: #403a34 !important;
-}
-
+[data-carm-planner="true"] [data-planner-role="info"],
 [data-carm-planner="true"] [data-planner-role="status"] {
-  border: 1px solid rgba(77,71,64,.10) !important;
-  border-radius: 13px !important;
-  background: rgba(239,234,226,.80) !important;
-  color: #332e29 !important;
-  box-shadow: inset 2px 2px 5px rgba(81,74,66,.09) !important;
+  border: 1px solid #8d9396 !important;
+  border-radius: 2px !important;
+  background: #c9cdca !important;
+  color: #242b2f !important;
 }
 
+[data-carm-planner="true"] [data-planner-role="info"] *,
 [data-carm-planner="true"] [data-planner-role="status"] * {
-  color: #332e29 !important;
+  color: #242b2f !important;
 }
 
 [data-carm-planner="true"] input[type="range"] {
   min-height: 0 !important;
-  height: 5px !important;
+  height: 4px !important;
   border: 0 !important;
-  border-radius: 999px !important;
-  background: #b8afa3 !important;
-  box-shadow: inset 1px 1px 3px rgba(63,57,51,.22) !important;
-  accent-color: #3a3733 !important;
+  border-radius: 0 !important;
+  background: #858c90 !important;
+  accent-color: #26343b !important;
 }
 
-[data-carm-planner="true"] * {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(90,81,72,.28) transparent;
+#${LEGAL_ID} {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #a2a7a9;
+  font: 9px/1.2 Arial, Helvetica, sans-serif;
+}
+
+#${LEGAL_ID} a {
+  color: #3b464b !important;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 `;
 
 function smallestMatching(root, predicate) {
   const matches = Array.from(root.querySelectorAll('div')).filter(predicate);
   return matches.sort((a, b) => a.textContent.length - b.textContent.length)[0] || null;
-}
-
-function setReactInputValue(input, value) {
-  const descriptor = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
-  descriptor?.set?.call(input, value);
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  input.dispatchEvent(new Event('change', { bubbles: true }));
-}
-
-function normalizeTranscript(text) {
-  return text
-    .replace(/\ba\s*p\b/gi, 'AP')
-    .replace(/\bp\s*a\b/gi, 'PA')
-    .replace(/\br\s*a\s*o\b/gi, 'RAO')
-    .replace(/\bl\s*a\s*o\b/gi, 'LAO')
-    .trim();
 }
 
 function installVoiceControl(panel) {
@@ -239,77 +202,37 @@ function installVoiceControl(panel) {
   if (!interpretButton || !requestInput || !requestRow) return;
   requestRow.dataset.plannerRole = 'voice-row';
 
-  if (document.getElementById(VOICE_ID)) return;
+  let voiceButton = document.getElementById(VOICE_ID);
+  if (!voiceButton) {
+    voiceButton = document.createElement('button');
+    voiceButton.id = VOICE_ID;
+    voiceButton.type = 'button';
+    voiceButton.dataset.plannerAction = 'voice';
+    voiceButton.textContent = 'VOICE';
+    voiceButton.title = 'Open medical voice search';
+    requestRow.insertBefore(voiceButton, interpretButton);
+  }
+}
 
-  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const voiceButton = document.createElement('button');
-  voiceButton.id = VOICE_ID;
-  voiceButton.type = 'button';
-  voiceButton.dataset.plannerAction = 'voice';
-  voiceButton.textContent = Recognition ? 'VOICE' : 'VOICE N/A';
-  voiceButton.title = Recognition
-    ? 'Speak an imaging request, for example “neck AP” or “left knee lateral”.'
-    : 'Voice recognition is not supported by this browser.';
-  voiceButton.disabled = !Recognition;
+function installLegalLinks(panel) {
+  if (document.getElementById(LEGAL_ID)) return;
+  const legal = document.createElement('div');
+  legal.id = LEGAL_ID;
 
-  let recognition = null;
-  let resetTimer = null;
+  const privacy = document.createElement('a');
+  privacy.href = '/privacy.html';
+  privacy.target = '_blank';
+  privacy.rel = 'noreferrer';
+  privacy.textContent = 'Privacy';
 
-  const resetButton = (label = 'VOICE', delay = 0) => {
-    if (resetTimer) window.clearTimeout(resetTimer);
-    const run = () => {
-      voiceButton.textContent = label;
-      voiceButton.dataset.listening = 'false';
-    };
-    if (delay) resetTimer = window.setTimeout(run, delay);
-    else run();
-  };
+  const terms = document.createElement('a');
+  terms.href = '/terms.html';
+  terms.target = '_blank';
+  terms.rel = 'noreferrer';
+  terms.textContent = 'Terms';
 
-  voiceButton.addEventListener('click', () => {
-    if (!Recognition) return;
-
-    try {
-      recognition?.abort?.();
-      recognition = new Recognition();
-      recognition.lang = 'en-US';
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-
-      voiceButton.textContent = 'LISTENING';
-      voiceButton.dataset.listening = 'true';
-
-      recognition.onresult = event => {
-        const raw = event.results?.[0]?.[0]?.transcript || '';
-        const transcript = normalizeTranscript(raw);
-        if (!transcript) {
-          resetButton('TRY AGAIN', 1100);
-          return;
-        }
-
-        setReactInputValue(requestInput, transcript);
-        voiceButton.textContent = 'GOT IT';
-        voiceButton.dataset.listening = 'false';
-
-        // Voice only feeds the existing INTERPRET workflow. It never previews,
-        // moves the simulated C-arm, or triggers exposure by itself.
-        window.setTimeout(() => {
-          if (!interpretButton.disabled) interpretButton.click();
-          resetButton('VOICE', 900);
-        }, 180);
-      };
-
-      recognition.onerror = () => resetButton('TRY AGAIN', 1200);
-      recognition.onend = () => {
-        if (voiceButton.dataset.listening === 'true') resetButton('VOICE');
-      };
-      recognition.start();
-    } catch {
-      resetButton('TRY AGAIN', 1200);
-    }
-  });
-
-  requestRow.insertBefore(voiceButton, interpretButton);
+  legal.append(privacy, terms);
+  panel.appendChild(legal);
 }
 
 function tagPlanner() {
@@ -373,11 +296,15 @@ function tagPlanner() {
   });
 
   installVoiceControl(panel);
+  installLegalLinks(panel);
   return true;
 }
 
 export default function PlannerUiPolish() {
   useEffect(() => {
+    const previous = document.getElementById('carm-planner-clay-style');
+    previous?.remove();
+
     if (!document.getElementById(STYLE_ID)) {
       const style = document.createElement('style');
       style.id = STYLE_ID;
