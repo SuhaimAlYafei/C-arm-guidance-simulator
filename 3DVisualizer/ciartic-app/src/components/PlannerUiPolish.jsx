@@ -7,6 +7,8 @@ const LEGAL_ID = 'carm-planner-legal-links';
 const plannerCss = `
 [data-carm-planner="true"] {
   width: 318px !important;
+  max-width: calc(100vw - 28px) !important;
+  max-height: calc(100vh - 28px) !important;
   padding: 16px !important;
   border: 1px solid #6f7579 !important;
   border-radius: 2px !important;
@@ -16,7 +18,10 @@ const plannerCss = `
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   font-family: Arial, Helvetica, sans-serif !important;
-  overflow: hidden !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  contain: layout paint style !important;
 }
 
 [data-carm-planner="true"] *,
@@ -25,6 +30,7 @@ const plannerCss = `
   box-shadow: none !important;
   text-shadow: none !important;
   transition: none !important;
+  animation: none !important;
 }
 
 [data-carm-planner="true"] div,
@@ -185,6 +191,23 @@ const plannerCss = `
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+@media (max-height: 780px), (max-width: 1100px) {
+  [data-carm-planner="true"] {
+    width: 300px !important;
+    padding: 12px !important;
+  }
+
+  [data-carm-planner="true"] input,
+  [data-carm-planner="true"] select,
+  [data-carm-planner="true"] button {
+    min-height: 30px !important;
+  }
+
+  [data-carm-planner="true"] [data-planner-role="description"] {
+    font-size: 9px !important;
+  }
+}
 `;
 
 function smallestMatching(root, predicate) {
@@ -285,12 +308,12 @@ function tagPlanner() {
 
   panel.querySelectorAll('button').forEach(button => {
     if (button.id === VOICE_ID) return;
-    const label = button.textContent?.trim().toUpperCase() || '';
+    const buttonLabel = button.textContent?.trim().toUpperCase() || '';
     delete button.dataset.plannerAction;
 
-    if (label.includes('PREVIEW PATH') || label.includes('EXPOSE X-RAY')) {
+    if (buttonLabel.includes('PREVIEW PATH') || buttonLabel.includes('EXPOSE X-RAY')) {
       button.dataset.plannerAction = 'primary';
-    } else if (label.includes('INTERPRET')) {
+    } else if (buttonLabel.includes('INTERPRET')) {
       button.dataset.plannerAction = 'interpret';
     }
   });
@@ -302,8 +325,7 @@ function tagPlanner() {
 
 export default function PlannerUiPolish() {
   useEffect(() => {
-    const previous = document.getElementById('carm-planner-clay-style');
-    previous?.remove();
+    document.getElementById('carm-planner-clay-style')?.remove();
 
     if (!document.getElementById(STYLE_ID)) {
       const style = document.createElement('style');
@@ -312,21 +334,28 @@ export default function PlannerUiPolish() {
       document.head.appendChild(style);
     }
 
-    let queued = false;
-    const refresh = () => {
-      if (queued) return;
-      queued = true;
-      window.requestAnimationFrame(() => {
-        queued = false;
+    // Avoid observing every React mutation. Try quickly during startup, then
+    // use a very slow integrity check for StrictMode/remount recovery.
+    let startupAttempts = 0;
+    const startupTimer = window.setInterval(() => {
+      startupAttempts += 1;
+      if (tagPlanner() || startupAttempts >= 20) {
+        window.clearInterval(startupTimer);
+      }
+    }, 150);
+
+    tagPlanner();
+
+    const integrityTimer = window.setInterval(() => {
+      if (!document.hidden && !document.querySelector('[data-carm-planner="true"]')) {
         tagPlanner();
-      });
+      }
+    }, 5000);
+
+    return () => {
+      window.clearInterval(startupTimer);
+      window.clearInterval(integrityTimer);
     };
-
-    refresh();
-    const observer = new MutationObserver(refresh);
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    return () => observer.disconnect();
   }, []);
 
   return null;
